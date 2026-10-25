@@ -9,7 +9,7 @@ from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from irm_kmi_api import IrmKmiApiError
 
-from .client import AtmosphereClient
+from .client import AtmosphereClient, UnsupportedLocation
 from .const import DOMAIN
 
 
@@ -39,6 +39,8 @@ class AtmosphereConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     return self.async_create_entry(
                         title=user_input["name"], data=user_input
                     )
+            except UnsupportedLocation:
+                errors["base"] = "unsupported_location"
             except (IrmKmiApiError, TimeoutError, ValueError, KeyError, TypeError):
                 errors["base"] = "cannot_connect"
         defaults = user_input or {}

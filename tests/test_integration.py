@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+import aiohttp
 import pytest
 from homeassistant import bootstrap, loader
 from homeassistant.components.weather import DOMAIN as WEATHER_DOMAIN
@@ -105,6 +106,51 @@ async def test_standalone_config_flow_entities_forecasts_and_outage(tmp_path):
             resources = hass.data[LOVELACE_DATA].resources.async_items()
             assert (
                 len([r for r in resources if r["url"].startswith("/atmosphere/")]) == 1
+            )
+            # Exercise current-location lookup over the actual authenticated WS protocol.
+            await hass.async_start()
+            await hass.auth.async_create_user("Owner", group_ids=["system-admin"])
+            user = await hass.auth.async_create_user(
+                "Weather viewer", group_ids=["system-users"]
+            )
+            refresh = await hass.auth.async_create_refresh_token(
+                user, client_id="http://localhost/weather-test"
+            )
+            token = hass.auth.async_create_access_token(refresh)
+            before_entries = len(hass.config_entries.async_entries("atmosphere"))
+            async with (
+                aiohttp.ClientSession() as session,
+                session.ws_connect("http://127.0.0.1:18765/api/websocket") as ws,
+            ):
+                assert (await ws.receive_json())["type"] == "auth_required"
+                await ws.send_json({"type": "auth", "access_token": token})
+                assert (await ws.receive_json())["type"] == "auth_ok"
+                command = {
+                    "id": 1,
+                    "type": "atmosphere/location",
+                    "latitude": 50.85,
+                    "longitude": 4.35,
+                    "language": "nl",
+                }
+                await ws.send_json(command)
+                reply = await ws.receive_json()
+                assert reply["success"], reply
+                assert reply["result"]["latitude"] == 50.85
+                assert reply["result"]["longitude"] == 4.35
+                assert reply["result"]["radar"]["center"] == [0.643, 0.2422]
+                await ws.send_json(command | {"id": 2})
+                cached = await ws.receive_json()
+                assert cached["result"]["updated_at"] == reply["result"]["updated_at"]
+                await ws.send_json(command | {"id": 3, "latitude": 91})
+                assert not (await ws.receive_json())["success"]
+                await ws.send_json(command | {"id": 4, "latitude": 50.9})
+                assert (await ws.receive_json())["error"]["code"] == "rate_limited"
+            assert (
+                len(hass.config_entries.async_entries("atmosphere")) == before_entries
+            )
+            assert (
+                hass.states.get(weather.entity_id).attributes["atmosphere_entry_id"]
+                == entry.entry_id
             )
             # Optional radar failure preserves successful forecasts and warnings.
             broken = json.loads(json.dumps(raw))

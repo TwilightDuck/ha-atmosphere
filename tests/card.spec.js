@@ -97,6 +97,8 @@ test("radar scrubs provider frames and opens maps only on request", async ({
   expect(maps).toEqual([]);
   await page.getByRole("button", { name: "Regenkaart", exact: false }).click();
   await expect(page.locator(".radar-frame")).toBeVisible();
+  await expect(page.locator(".radar-base")).toBeVisible();
+  await expect(page.locator(".radar-caption")).toContainText("mm/10min");
   await page.locator(".radar-slider").fill("10");
   await expect(page.locator(".radar-time")).not.toBeEmpty();
   await page.keyboard.press("Escape");
@@ -136,4 +138,204 @@ test("reduced motion, missing optional sources, empty radar and weather changes 
   await page.keyboard.press("Escape");
   await page.locator(".moon-panel").click();
   await expect(page.locator(".detail-moon")).toBeVisible();
+});
+
+test("GPS lookup uses this browser location and can return to the saved place", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({
+    latitude: 50.85,
+    longitude: 4.35,
+    accuracy: 15,
+  });
+  await open(page);
+  await page.evaluate((sample) => {
+    window.weatherRequests = [];
+    document.querySelector("atmosphere-card").hass = {
+      user: { id: "viewer" },
+      states: {
+        "weather.malle_weather": {
+          entity_id: "weather.malle_weather",
+          state: "cloudy",
+          attributes: {
+            atmosphere_entry_id: "preview",
+            updated_at: sample.updated_at,
+          },
+        },
+      },
+      callWS: async (command) => {
+        window.weatherRequests.push(command);
+        return {
+          ...sample,
+          name: command.type === "atmosphere/location" ? "Brussel" : "Malle",
+        };
+      },
+    };
+  }, sample);
+  await page
+    .getByRole("button", { name: "Huidige locatie", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Brussel", exact: true }),
+  ).toBeVisible();
+  const request = await page.evaluate(() =>
+    window.weatherRequests.find((r) => r.type === "atmosphere/location"),
+  );
+  expect(request.latitude).toBe(50.85);
+  expect(request.longitude).toBe(4.35);
+  await page
+    .getByRole("button", { name: "Opgeslagen locatie", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Malle", exact: true }),
+  ).toBeVisible();
+});
+
+test("Companion fallback chooses only the signed-in viewer GPS tracker", async ({
+  page,
+}) => {
+  await open(page);
+  await page.evaluate((sample) => {
+    window.externalApp = {};
+    window.weatherRequests = [];
+    const now = new Date().toISOString();
+    const state = (id, attrs) => ({
+      entity_id: id,
+      state: "home",
+      attributes: attrs,
+      last_updated: now,
+    });
+    document.querySelector("atmosphere-card").hass = {
+      user: { id: "viewer-b" },
+      states: {
+        "weather.malle_weather": state("weather.malle_weather", {
+          atmosphere_entry_id: "preview",
+          updated_at: sample.updated_at,
+        }),
+        "person.a": state("person.a", {
+          user_id: "viewer-a",
+          device_trackers: ["device_tracker.phone_a"],
+        }),
+        "person.b": state("person.b", {
+          user_id: "viewer-b",
+          device_trackers: ["device_tracker.phone_b"],
+        }),
+        "device_tracker.phone_a": state("device_tracker.phone_a", {
+          source_type: "gps",
+          latitude: 50.8,
+          longitude: 4.3,
+          gps_accuracy: 10,
+          friendly_name: "Phone A",
+        }),
+        "device_tracker.phone_b": state("device_tracker.phone_b", {
+          source_type: "gps",
+          latitude: 51.1,
+          longitude: 4.7,
+          gps_accuracy: 20,
+          friendly_name: "Phone B",
+        }),
+      },
+      callWS: async (command) => {
+        window.weatherRequests.push(command);
+        return {
+          ...sample,
+          name:
+            command.type === "atmosphere/location"
+              ? "Phone B location"
+              : "Malle",
+        };
+      },
+    };
+  }, sample);
+  await page
+    .getByRole("button", { name: "Huidige locatie", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Phone B location", exact: true }),
+  ).toBeVisible();
+  const request = await page.evaluate(() =>
+    window.weatherRequests.find((r) => r.type === "atmosphere/location"),
+  );
+  expect(request.latitude).toBe(51.1);
+  expect(request.longitude).toBe(4.7);
+  await expect(page.locator(".location-note")).toContainText("Phone B");
+});
+
+test("visible panels reflow in a compact card and radar zooms around the location", async ({
+  page,
+}) => {
+  await open(page);
+  await page.setViewportSize({ width: 240, height: 900 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.evaluate(() =>
+    document
+      .querySelector("atmosphere-card")
+      .setConfig({
+        entity: "weather.malle_weather",
+        show: ["hourly", "wind", "radar"],
+      }),
+  );
+  await expect(page.locator(".hero")).not.toBeVisible();
+  await expect(page.locator(".daily")).not.toBeVisible();
+  await expect(page.locator(".moon-panel")).not.toBeVisible();
+  await expect(page.locator(".hourly")).toBeVisible();
+  await expect(page.locator("[data-section=wind]")).toBeVisible();
+  await page.getByRole("button", { name: "Regenkaart", exact: false }).click();
+  const before = await page
+    .locator(".radar-layers")
+    .evaluate((el) => getComputedStyle(el).transform);
+  await page.getByRole("button", { name: "Inzoomen", exact: true }).click();
+  const after = await page
+    .locator(".radar-layers")
+    .evaluate((el) => getComputedStyle(el).transform);
+  expect(before).not.toBe(after);
+});
+
+test("sky motion freezes while hidden and resumes without elapsed-time catchup", async ({
+  page,
+}) => {
+  await page.clock.install();
+  await open(page);
+  await page.clock.runFor(5000);
+  const before = await page
+    .locator(".clouds.far")
+    .evaluate((el) => getComputedStyle(el).transform);
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      get: () => true,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await page.clock.fastForward(10 * 60000);
+  expect(
+    await page
+      .locator(".clouds.far")
+      .evaluate((el) => getComputedStyle(el).transform),
+  ).toBe(before);
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      get: () => false,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await page.clock.runFor(16);
+  expect(
+    await page
+      .locator(".clouds.far")
+      .evaluate((el) => getComputedStyle(el).transform),
+  ).toBe(before);
+  await page.clock.runFor(1000);
+  expect(
+    await page
+      .locator(".clouds.far")
+      .evaluate((el) => getComputedStyle(el).transform),
+  ).not.toBe(before);
 });

@@ -5,6 +5,10 @@ from datetime import datetime
 from irm_kmi_api import IrmKmiApiClientHa, IrmKmiApiError
 
 
+class UnsupportedLocation(IrmKmiApiError):
+    """The requested coordinates are outside KMI coverage."""
+
+
 class AtmosphereClient(IrmKmiApiClientHa):
     def __init__(self, session):
         super().__init__(
@@ -13,9 +17,18 @@ class AtmosphereClient(IrmKmiApiClientHa):
         )
         # The dependency's class-level URL-only cache otherwise mixes locations.
         self._cache = {}
+        self.radar_center = [0.5, 0.5]
 
     async def get_forecasts_coord(self, coord):
         result = await super().get_forecasts_coord(coord)
+        if result.get("country") not in ("BE", "LU"):
+            raise UnsupportedLocation("KMI forecasts cover Belgium and Luxembourg")
+        animation = result.get("animation", {})
+        if isinstance(animation, dict):
+            self.radar_center = [
+                animation.get("localisationLayerRatioX", 0.5),
+                animation.get("localisationLayerRatioY", 0.5),
+            ]
         forecast = result.get("for", {})
         if not isinstance(forecast, dict) or not isinstance(
             forecast.get("warning"), list

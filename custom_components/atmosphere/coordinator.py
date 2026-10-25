@@ -79,7 +79,7 @@ def daily_periods(periods):
 class AtmosphereCoordinator(DataUpdateCoordinator):
     """One polling job per location; optional sources never hide KMI warnings."""
 
-    def __init__(self, hass, entry):
+    def __init__(self, hass, entry, *, location=None):
         super().__init__(
             hass,
             _LOGGER,
@@ -88,6 +88,7 @@ class AtmosphereCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(minutes=7),
         )
         self.entry = entry
+        self.location = location or entry.data
         self.session = async_get_clientsession(hass)
         self.api = AtmosphereClient(self.session)
         self.supplement = {}
@@ -139,8 +140,8 @@ class AtmosphereCoordinator(DataUpdateCoordinator):
         self.optional_at = now
 
     async def _async_update_data(self):
-        latitude, longitude = self.entry.data["latitude"], self.entry.data["longitude"]
-        language = self.entry.data["language"]
+        latitude, longitude = self.location["latitude"], self.location["longitude"]
+        language = self.location["language"]
         try:
             async with asyncio.timeout(25):
                 self.api.expire_cache()
@@ -206,7 +207,9 @@ class AtmosphereCoordinator(DataUpdateCoordinator):
         except (ValueError, KeyError, TypeError):
             radar, animation = [], {}
         return {
-            "name": self.entry.data["name"],
+            "name": self.location["name"]
+            if self.entry
+            else (self.api.get_city() or self.location["name"]),
             "latitude": latitude,
             "longitude": longitude,
             "language": language,
@@ -221,6 +224,7 @@ class AtmosphereCoordinator(DataUpdateCoordinator):
             "warnings_updated_at": now.isoformat(),
             "rain": [normalise(f) for f in radar],
             "radar": {
+                "center": self.api.radar_center,
                 "frames": [
                     {"time": f["time"].isoformat(), "url": f["image"]}
                     for f in animation.get("sequence", [])

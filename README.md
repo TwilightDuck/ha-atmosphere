@@ -4,7 +4,7 @@ An Apple Weather-inspired Home Assistant integration, with a living sky and a co
 
 ![Atmosphere Weather](screenshots/preview-1440.png)
 
-## Weather that feels like weather
+## Weather features
 
 - Animated, condition-aware skies: drifting procedural clouds, sunlight, stars, rain, and snow. Day and night follow the location's sunrise and sunset.
 - Current temperature, feels-like temperature, and the day's high and low.
@@ -13,7 +13,7 @@ An Apple Weather-inspired Home Assistant integration, with a living sky and a co
 - KMI rain nowcast, animated radar imagery with a scrubber, and on-demand Windy rain and wind maps.
 - European air quality index and pollutant details, UV, wind and gusts, humidity, dew point, visibility, and pressure.
 - Locally calculated sun and moon information, a shaded moon, illumination, moonrise/set, and the next full-moon date.
-- Responsive layouts, keyboard-accessible details, a visual editor, Dutch and English card text, reduced-motion support, and an animation pause button. KMI forecast/warning text supports Dutch, English, French, and German.
+- Responsive layouts down to compact 200–240 px cards, configurable panels, keyboard-accessible details, a visual editor, Dutch and English card text, reduced-motion support, and an animation pause button. KMI forecast/warning text supports Dutch, English, French, and German.
 
 ## Install
 
@@ -32,7 +32,7 @@ The integration registers its bundled card resource automatically for storage-mo
 ```yaml
 lovelace:
   resources:
-    - url: /atmosphere/atmosphere-card.js?v=1.0.0
+    - url: /atmosphere/atmosphere-card.js?v=1.1.0
       type: module
 ```
 
@@ -42,7 +42,7 @@ Copy `custom_components/atmosphere` into your Home Assistant `custom_components`
 
 ## Card configuration
 
-The visual editor is sufficient. An equivalent YAML card is:
+The visual editor lets you choose the location, display name, language, and visible panels. An equivalent YAML card is:
 
 ```yaml
 type: custom:atmosphere-card
@@ -50,6 +50,30 @@ entity: weather.malle_weather
 ```
 
 Use the actual entity created by your integration; names depend on the configured location. Optional `name` overrides the displayed place name; optional `language: nl` or `language: en` overrides card language. Without `entity`, the first loaded Atmosphere location is used. Create additional integration entries for additional locations.
+
+Use `show` to choose panels; omitting it shows everything. For example:
+
+```yaml
+type: custom:atmosphere-card
+entity: weather.malle_weather
+show:
+  - current
+  - warnings
+  - hourly
+  - daily
+  - wind
+  - radar
+```
+
+Supported panels are `current`, `warnings`, `hourly`, `daily`, `feels`, `sun`, `air`, `wind`, `uv`, `rain`, `radar`, `moon`, `humidity`, `visibility`, and `pressure`. Remaining panels reflow into the available space. Rain radar opens zoomed around the forecast location, with +/− controls; Windy rain maps also start at a local zoom level. Sky motion advances only while the card is visible, so background tabs do not accumulate a catch-up animation.
+
+## Current device location
+
+Tap the **⌖** button to request current-location weather; **⌂** returns to the saved location. This does not change the saved integration entry or its entities.
+
+Regular HTTPS browsers request one GPS fix using their location permission. Home Assistant Companion does not expose a documented frontend command that forces a fresh native GPS fix, so the app path reads GPS trackers linked to the **signed-in viewer's person**, never a globally fixed phone. A viewer with multiple GPS devices gets a picker. The fallback shows its source, last reported time, and accuracy. It rejects unavailable, missing, older-than-15-minute, or worse-than-250-metre app locations. Refresh the Companion app with **Exact** location enabled if its location is old; different people should use their own HA accounts and linked person records. A shared login cannot identify which physical phone is viewing the card.
+
+Browser GPS is used when available; if it is denied or unavailable, the card offers the viewer's app trackers. No background GPS watch is started. The selected point is kept only for this open card session; backend results are cached per authenticated user for seven minutes and are not written to entities, config entries, or the recorder. Lookup sends coordinates to KMI and rounded coordinates to the optional Open-Meteo sources. Outside Belgium/Luxembourg, the card reports unsupported coverage and keeps the saved weather view.
 
 For a full-page dashboard, place the card in a **Panel** view. It also supports native Sections sizing:
 
@@ -83,7 +107,7 @@ npm run build
 npm test
 ```
 
-The browser suite covers responsive rendering (320, 390, 768, and 1440 px), hourly modes, detail dialogs, warning-feed outage behavior, radar scrubbing, map loading, reduced motion, and sparse optional data. It uses a captured public sample, not a fabricated live forecast.
+The browser suite covers responsive rendering (including compact 240 px cards), browser GPS, per-viewer app GPS, configurable panels, focus-safe animation resume, hourly modes, detail dialogs, warning-feed outage behavior, radar scrubbing, map loading, reduced motion, and sparse optional data. It uses a captured public sample, not a fabricated live forecast.
 
 For the Home Assistant feature check:
 
@@ -93,7 +117,7 @@ python3 -m venv .venv
 .venv/bin/python -m pytest tests/test_integration.py -q
 ```
 
-That check runs a real isolated HA config flow, registers native entities and the resource, calls native daily/hourly forecast services, simulates outages/missing radar, and verifies reload/unload. `scripts/probe.py` is a read-only live-provider probe for the public Malle sample coordinates. `npm run preview` opens the captured sample at `http://127.0.0.1:18764/preview.html`; its snapshot date is visible in the footer and it is not a live dashboard.
+That check runs a real isolated HA config flow, registers native entities and the resource, calls native daily/hourly forecast services, simulates outages/missing radar, verifies reload/unload, and exercises a real authenticated WebSocket for temporary GPS lookups, cache reuse, coordinate validation, and rate limiting. `scripts/probe.py` is a read-only live-provider probe for the public Malle sample coordinates. `npm run preview` opens the captured sample at `http://127.0.0.1:18764/preview.html`; its snapshot date is visible in the footer and it is not a live dashboard.
 
 ## Remove or recover
 

@@ -1,6 +1,8 @@
 import SunCalc from "suncalc";
 import { styles } from "./styles.js";
 
+const radarBase = new URL("./radar-base.png", import.meta.url).href;
+
 const esc = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
@@ -32,6 +34,20 @@ const conditions = {
 };
 const words = {
   en: {
+    currentLocation: "Current location",
+    homeLocation: "Saved location",
+    locating: "Getting your location…",
+    locationDenied:
+      "Location permission is needed. Enable it in your browser or choose your app device.",
+    locationFailed: "Your location could not be retrieved.",
+    unsupported: "KMI weather is available in Belgium and Luxembourg.",
+    chooseDevice: "Choose your GPS device",
+    staleLocation:
+      "Location is old or not precise enough. Refresh your Companion app with Exact location enabled.",
+    appLocation: "Use app location",
+    reported: "Reported",
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
     hourly: "Hourly forecast",
     daily: "Daily forecast",
     feels: "Feels like",
@@ -109,6 +125,20 @@ const words = {
     current: "Current conditions",
   },
   nl: {
+    currentLocation: "Huidige locatie",
+    homeLocation: "Opgeslagen locatie",
+    locating: "Je locatie wordt opgehaald…",
+    locationDenied:
+      "Locatietoestemming is nodig. Schakel die in je browser in of kies je app-apparaat.",
+    locationFailed: "Je locatie kon niet worden opgehaald.",
+    unsupported: "KMI-weer is beschikbaar in België en Luxemburg.",
+    chooseDevice: "Kies je GPS-apparaat",
+    staleLocation:
+      "De locatie is te oud of niet nauwkeurig genoeg. Ververs de Companion-app met Exacte locatie ingeschakeld.",
+    appLocation: "App-locatie gebruiken",
+    reported: "Gemeld",
+    zoomIn: "Inzoomen",
+    zoomOut: "Uitzoomen",
     hourly: "Uurlijkse verwachting",
     daily: "Dagelijkse verwachting",
     feels: "Gevoelstemperatuur",
@@ -219,6 +249,24 @@ function icon(condition, night = false, size = 28) {
   }
   return `<svg class="weather-icon" width="${size}" height="${size}" viewBox="0 0 42 44" aria-hidden="true">${body}</svg>`;
 }
+const sections = [
+  "current",
+  "warnings",
+  "hourly",
+  "daily",
+  "feels",
+  "sun",
+  "air",
+  "wind",
+  "uv",
+  "rain",
+  "radar",
+  "moon",
+  "humidity",
+  "visibility",
+  "pressure",
+];
+
 const symbols = {
   hourly: "◷",
   daily: "▦",
@@ -266,11 +314,18 @@ class AtmosphereCard extends HTMLElement {
       .querySelector("dialog")
       .addEventListener("close", () => clearInterval(this._radarTimer));
     this._radarFrame = 0;
+    this._radarZoom = 2.6;
+    this._skyTime = 0;
   }
   setConfig(config) {
     if (config.entity && !config.entity.startsWith("weather."))
       throw new Error("Select an Atmosphere weather entity.");
     this._config = { ...config };
+    this._locationGeneration = (this._locationGeneration || 0) + 1;
+    this._locationBusy = false;
+    this._locationError = null;
+    this._deviceCoords = null;
+    this._locationNote = null;
     this._data = null;
     this._lastKey = null;
     if (this._hass) this._fetch();
@@ -347,18 +402,31 @@ class AtmosphereCard extends HTMLElement {
   async _fetch() {
     if (!this._hass || !this._config || this._fetching) return;
     this._fetching = true;
-    const config = this._config;
+    const config = this._config,
+      locationGeneration = this._locationGeneration;
     try {
       const entity = this._entity();
       if (this._config.entity && !entity)
         throw new Error(`Entity unavailable: ${this._config.entity}`);
-      const data = await this._hass.callWS({
-        type: "atmosphere/data",
-        ...(entity?.attributes?.atmosphere_entry_id
-          ? { entry_id: entity.attributes.atmosphere_entry_id }
-          : {}),
-      });
-      if (config !== this._config) return;
+      const data = await this._hass.callWS(
+        this._deviceCoords
+          ? {
+              type: "atmosphere/location",
+              ...this._deviceCoords,
+              language: this._data?.language || "nl",
+            }
+          : {
+              type: "atmosphere/data",
+              ...(entity?.attributes?.atmosphere_entry_id
+                ? { entry_id: entity.attributes.atmosphere_entry_id }
+                : {}),
+            },
+      );
+      if (
+        config !== this._config ||
+        locationGeneration !== this._locationGeneration
+      )
+        return;
       this._data = data;
       this._error = null;
     } catch (error) {
@@ -418,7 +486,7 @@ class AtmosphereCard extends HTMLElement {
       );
   }
   _panel(title, content, action = title, classes = "") {
-    return `<button class="panel ${classes}" data-action="detail" data-value="${esc(action)}"><h2><span aria-hidden="true">${symbols[title] || "◉"}</span>${this._t(title)}<span class="chevron" aria-hidden="true">›</span></h2>${content}</button>`;
+    return `<button class="panel ${classes}" data-section="${title === "sunrise" || title === "sunset" ? "sun" : title}" data-action="detail" data-value="${esc(action)}"><h2><span aria-hidden="true">${symbols[title] || "◉"}</span>${this._t(title)}<span class="chevron" aria-hidden="true">›</span></h2>${content}</button>`;
   }
   _render() {
     if (!this.isConnected) return;
@@ -510,13 +578,15 @@ class AtmosphereCard extends HTMLElement {
       (r) => (r.precipitation || 0) > 0 || r.might_rain,
     );
     body.innerHTML = `
-      <div class="toolbar"><span class="location-pin" aria-hidden="true">⌖</span><span>${esc(this._config.name || d.name)}</span><button class="motion" data-action="motion" aria-label="${this._t(this._paused || this._reduced.matches ? "play" : "pause")}" aria-pressed="${!this._paused && !this._reduced.matches}">${this._paused ? "▷" : "Ⅱ"}</button></div>
-      <header class="hero"><h1>${esc(this._config.name || d.name)}</h1><div class="temperature">${this._temp(c.temperature)}</div><div class="condition">${this._condition(condition)}</div><div class="hero-range">${valid(c.apparent_temperature) ? `${this._t("feels")} ${this._temp(c.apparent_temperature)}<span>·</span>` : ""}${this._t("high")}:${this._temp(today.temperature)} ${this._t("low")}:${this._temp(today.templow)}</div></header>
+      <div class="toolbar"><button class="location-pin ${this._deviceCoords ? "selected" : ""}" data-action="locate" aria-label="${this._t("currentLocation")}" aria-busy="${!!this._locationBusy}" title="${this._t("currentLocation")}">⌖</button><span>${esc(this._deviceCoords ? d.name : this._config.name || d.name)}</span>${this._deviceCoords ? `<button class="home-location" data-action="home" aria-label="${this._t("homeLocation")}">⌂</button>` : ""}<button class="motion" data-action="motion" aria-label="${this._t(this._paused || this._reduced.matches ? "play" : "pause")}" aria-pressed="${!this._paused && !this._reduced.matches}">${this._paused ? "▷" : "Ⅱ"}</button></div>
+      <header class="hero" data-section="current"><h1>${esc(this._deviceCoords ? d.name : this._config.name || d.name)}</h1><div class="temperature">${this._temp(c.temperature)}</div><div class="condition">${this._condition(condition)}</div><div class="hero-range">${valid(c.apparent_temperature) ? `${this._t("feels")} ${this._temp(c.apparent_temperature)}<span>·</span>` : ""}${this._t("high")}:${this._temp(today.temperature)} ${this._t("low")}:${this._temp(today.templow)}</div></header>
       ${stale ? `<div class="connection-status" role="status">${this._t("stale")} · ${this._t("warnUnavailable")}<button data-action="refresh">${this._t("refresh")}</button></div>` : ""}
+      ${this._locationBusy || this._locationError ? `<div class="location-status" role="status">${esc(this._locationBusy ? this._t("locating") : this._locationError)}${!this._locationBusy && this._appTrackers().length ? `<button data-action="app-location">${this._t("appLocation")}</button>` : ""}</div>` : ""}
+      ${this._locationNote ? `<div class="location-note">${esc(this._locationNote)}</div>` : ""}
       <div class="forecast-grid">
-        <button class="panel warning ${warnings.length ? "has-warning" : ""} level-${warnings[0]?.level || 0}" data-action="detail" data-value="warnings"><h2><span aria-hidden="true">${warnings.length ? "△" : "✓"}</span>${this._t("warnings")}<span class="chevron">›</span></h2>${warnings.length ? `<div class="warning-title">${esc(warnings[0].friendly_name)}</div><div class="warning-line"><span class="severity-dot"></span>${this._t(stale ? "stale" : new Date(warnings[0].starts_at) <= new Date() ? "active" : "upcoming")} · ${this._time(warnings[0].starts_at)} – ${this._time(warnings[0].ends_at)}</div><p class="warning-preview">${esc(warnings[0].text)}</p>${warnings.length > 1 ? `<span class="warning-count">+${warnings.length - 1}</span>` : ""}` : `<div class="warning-title">${this._t(stale ? "warnUnavailable" : "clear")}</div><div class="warning-line">KMI / IRM</div>`}</button>
-        <section class="panel hourly"><div class="panel-header"><h2><span aria-hidden="true">◷</span>${this._t("hourly")}</h2><div class="segmented" role="group" aria-label="${this._t("hourly")}">${["temperature", "rain", "wind"].map((m, i) => `<button data-action="mode" data-value="${m}" aria-label="${this._t(m)}" aria-pressed="${this._mode === m}">${["°", "♧", "≋"][i]}</button>`).join("")}</div></div><div class="hours">${hourly.map((f, i) => `<button class="hour" data-action="hour" data-value="${esc(f.datetime)}"><span>${i === 0 ? this._t("now") : this._time(f.datetime, { minute: undefined })}</span>${icon(f.condition, !f.is_daytime, 32)}<span class="chance">${valid(f.precipitation_probability) ? num(f.precipitation_probability) + "%" : "—"}</span><strong>${this._mode === "temperature" ? this._temp(f.temperature) : this._mode === "rain" ? num(f.precipitation, 1) : num(f.wind_speed)}</strong>${this._mode !== "temperature" ? `<small>${this._mode === "rain" ? "mm" : "km/h"}</small>` : ""}</button>`).join("")}</div></section>
-        <section class="panel daily"><h2><span aria-hidden="true">▦</span>${d.daily.length} ${this._nl ? "dagen" : "days"}</h2><div class="days">${this._dailyRows(d.daily)}</div></section>
+        <button data-section="warnings" class="panel warning ${warnings.length ? "has-warning" : ""} level-${warnings[0]?.level || 0}" data-action="detail" data-value="warnings"><h2><span aria-hidden="true">${warnings.length ? "△" : "✓"}</span>${this._t("warnings")}<span class="chevron">›</span></h2>${warnings.length ? `<div class="warning-title">${esc(warnings[0].friendly_name)}</div><div class="warning-line"><span class="severity-dot"></span>${this._t(stale ? "stale" : new Date(warnings[0].starts_at) <= new Date() ? "active" : "upcoming")} · ${this._time(warnings[0].starts_at)} – ${this._time(warnings[0].ends_at)}</div><p class="warning-preview">${esc(warnings[0].text)}</p>${warnings.length > 1 ? `<span class="warning-count">+${warnings.length - 1}</span>` : ""}` : `<div class="warning-title">${this._t(stale ? "warnUnavailable" : "clear")}</div><div class="warning-line">KMI / IRM</div>`}</button>
+        <section data-section="hourly" class="panel hourly"><div class="panel-header"><h2><span aria-hidden="true">◷</span>${this._t("hourly")}</h2><div class="segmented" role="group" aria-label="${this._t("hourly")}">${["temperature", "rain", "wind"].map((m, i) => `<button data-action="mode" data-value="${m}" aria-label="${this._t(m)}" aria-pressed="${this._mode === m}">${["°", "♧", "≋"][i]}</button>`).join("")}</div></div><div class="hours">${hourly.map((f, i) => `<button class="hour" data-action="hour" data-value="${esc(f.datetime)}"><span>${i === 0 ? this._t("now") : this._time(f.datetime, { minute: undefined })}</span>${icon(f.condition, !f.is_daytime, 32)}<span class="chance">${valid(f.precipitation_probability) ? num(f.precipitation_probability) + "%" : "—"}</span><strong>${this._mode === "temperature" ? this._temp(f.temperature) : this._mode === "rain" ? num(f.precipitation, 1) : num(f.wind_speed)}</strong>${this._mode !== "temperature" ? `<small>${this._mode === "rain" ? "mm" : "km/h"}</small>` : ""}</button>`).join("")}</div></section>
+        <section data-section="daily" class="panel daily"><h2><span aria-hidden="true">▦</span>${d.daily.length} ${this._nl ? "dagen" : "days"}</h2><div class="days">${this._dailyRows(d.daily)}</div></section>
         <div class="metrics">
           ${this._panel("feels", `<div class="metric-value">${this._temp(c.apparent_temperature)}</div><div class="metric-note">${this._nl ? "Werkelijk" : "Actual"} ${this._temp(c.temperature)}</div><div class="feels-line"><span style="left:${clamp(50 + ((c.apparent_temperature ?? c.temperature) - c.temperature) * 4, 5, 95)}%"></span></div>`)}
           ${this._panel(sunKey, `<div class="metric-value">${this._time(sunNext)}</div>${this._sunArc()}<div class="metric-note sun-note">${this._t(sunKey === "sunset" ? "sunrise" : "sunset")} ${this._time(d.sun[sunKey === "sunset" ? "sunrise" : "sunset"])}</div>`, "sun")}
@@ -534,12 +604,13 @@ class AtmosphereCard extends HTMLElement {
               .join("")}</div>`,
           )}
         </div>
-        <section class="panel radar-panel"><div class="panel-header"><h2><span aria-hidden="true">◉</span>${this._t("radar")}</h2><button class="text-button" data-action="detail" data-value="radar">${this._t("rainmap")} <span aria-hidden="true">↗</span></button></div><button class="rain-outlook" data-action="detail" data-value="radar"><span>${this._t(willRain ? "rainSoon" : "noRain")}</span><span aria-hidden="true">›</span></button><div class="rain-chart">${this._rainChart(rainNext)}</div><div class="chart-times"><span>${this._t("now")}</span><span>+30 min</span><span>+60 min</span><span>+90 min</span></div></section>
+        <section data-section="radar" class="panel radar-panel"><div class="panel-header"><h2><span aria-hidden="true">◉</span>${this._t("radar")}</h2><button class="text-button" data-action="detail" data-value="radar">${this._t("rainmap")} <span aria-hidden="true">↗</span></button></div><button class="rain-outlook" data-action="detail" data-value="radar"><span>${this._t(willRain ? "rainSoon" : "noRain")}</span><span aria-hidden="true">›</span></button><div class="rain-chart">${this._rainChart(rainNext)}</div><div class="chart-times"><span>${this._t("now")}</span><span>+30 min</span><span>+60 min</span><span>+90 min</span></div></section>
         ${this._panel("moon", `<div class="moon-layout"><div><div class="moon-phase">${this._moonName(moon.phase)}</div><div class="metric-note">${num(moon.fraction * 100)}% ${this._t("illuminated")}</div><div class="moon-date">${this._date(this._nextFullMoon(), { day: "numeric", month: "short" })}<span>${this._t("nextFull")}</span></div></div><canvas class="moon" width="240" height="240" aria-hidden="true"></canvas></div>`, "moon", "moon-panel")}
         <div class="small-metrics">${this._panel("humidity", `<div class="small-value">${num(c.humidity)}<span>%</span></div><div class="metric-note">${this._t("dew")} ${this._temp(c.dew_point)}</div>`)}${this._panel("visibility", `<div class="small-value">${num(c.visibility, 1)}<span>km</span></div>`)}${this._panel("pressure", `<div class="small-value">${num(c.pressure)}<span>hPa</span></div><div class="pressure-scale"><span>980</span><i style="left:${clamp((((c.pressure || 1013) - 980) / 60) * 100, 0, 100)}%"></i><span>1040</span></div>`)}</div>
       </div><footer><span>${this._t("updated")} ${this._time(d.updated_at)} · KMI / IRM</span><button data-action="detail" data-value="source">${this._t("source")} ⓘ</button></footer>`;
     body.querySelector(".hours").scrollLeft = oldScroll;
     body.querySelector(".days").scrollTop = scrollTop;
+    this._applyVisibility();
     this._drawMoon(body.querySelector(".moon"));
     this._sizeCanvas();
     this._animate();
@@ -683,17 +754,27 @@ class AtmosphereCard extends HTMLElement {
       ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const condition = this._data?.current?.condition || "";
-    if (!moving || !/(rain|pour|snow|hail|lightning)/.test(condition)) return;
+    if (!moving) return;
+    const precipitation = /(rain|pour|snow|hail|lightning)/.test(condition);
+    const clouds = this.shadowRoot.querySelectorAll(".clouds");
     const snow = /snow/.test(condition),
-      particles = Array.from({ length: snow ? 65 : 100 }, () => ({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        s: 0.4 + Math.random(),
-        r: 1 + Math.random() * 2,
-      }));
-    let last = 0;
+      particles = Array.from(
+        { length: precipitation ? (snow ? 65 : 100) : 0 },
+        () => ({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          s: 0.4 + Math.random(),
+          r: 1 + Math.random() * 2,
+        }),
+      );
+    let last = null;
     const frame = (time) => {
-      const dt = Math.min((time - last) / 1000, 0.05);
+      const dt = last === null ? 0 : Math.min((time - last) / 1000, 0.05);
+      this._skyTime += dt;
+      const far = 0.5 - 0.5 * Math.cos((this._skyTime / 28) * Math.PI);
+      const near = 0.5 + 0.5 * Math.cos((this._skyTime / 42) * Math.PI);
+      clouds[0].style.transform = `translateX(${-4 + 12 * far}%) scale(${1.03 + 0.1 * far})`;
+      clouds[1].style.transform = `translateX(${-4 + 12 * near}%) scale(${1.03 + 0.1 * near})`;
       last = time;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.strokeStyle = "rgba(210,233,255,.3)";
@@ -723,6 +804,23 @@ class AtmosphereCard extends HTMLElement {
   }
   _action(action, value) {
     if (action === "refresh") return this._fetch();
+    if (action === "locate") return this._locate();
+    if (action === "app-location") return this._chooseAppLocation();
+    if (action === "use-tracker") return this._useTracker(value);
+    if (action === "home") {
+      this._locationGeneration++;
+      this._locationBusy = false;
+      this._deviceCoords = null;
+      this._locationNote = null;
+      this._locationError = null;
+      this._fetch();
+      return;
+    }
+    if (action === "radar-zoom") {
+      this._radarZoom = clamp(this._radarZoom + Number(value), 1, 6);
+      this._zoomRadar();
+      return;
+    }
     if (action === "motion") {
       this._paused = !this._paused;
       this._render();
@@ -812,7 +910,7 @@ class AtmosphereCard extends HTMLElement {
       )}`;
     } else if (type === "radar") {
       title = t("radar");
-      content = `<div class="map-switch"><button data-action="map" data-value="radar">${t("rainmap")}</button><button data-action="map" data-value="wind">${t("windmap")}</button></div><div class="radar-stage"><img class="radar-frame" alt="${t("radar")}"/><img class="radar-overlay" alt=""/><div class="radar-error" hidden>${t("mapError")}</div></div><div class="radar-controls"><button data-action="radar-play" aria-label="${t("play")}">▶ / Ⅱ</button><input class="radar-slider" type="range" min="0" max="${Math.max(0, d.radar.frames.length - 1)}" value="0" aria-label="${t("radar")}"/><time class="radar-time"></time></div><div class="radar-caption">KMI / IRM · mm/h</div><div class="map-host"></div>`;
+      content = `<div class="map-switch"><button data-action="map" data-value="radar">${t("rainmap")}</button><button data-action="map" data-value="wind">${t("windmap")}</button></div><div class="radar-zoom-controls"><button data-action="radar-zoom" data-value="-0.5" aria-label="${t("zoomOut")}">−</button><button data-action="radar-zoom" data-value="0.5" aria-label="${t("zoomIn")}">+</button></div><div class="radar-stage"><div class="radar-layers"><img class="radar-base" src="${esc(radarBase)}" alt=""/><img class="radar-frame" alt="${t("radar")}"/><img class="radar-overlay" alt=""/></div><div class="radar-error" hidden>${t("mapError")}</div></div><div class="radar-controls"><button data-action="radar-play" aria-label="${t("play")}">▶ / Ⅱ</button><input class="radar-slider" type="range" min="0" max="${Math.max(0, d.radar.frames.length - 1)}" value="0" aria-label="${t("radar")}"/><time class="radar-time"></time></div><div class="radar-caption">KMI / IRM · ${esc(d.radar.unit || "mm/10min")}</div><div class="map-host"></div>`;
     } else if (type === "wind") {
       content = `<div class="detail-temperature">${num(c.wind_speed)}<span> km/h</span></div>${stats(
         [
@@ -855,7 +953,7 @@ class AtmosphereCard extends HTMLElement {
     } else if (type === "rain") {
       content = `<div class="detail-temperature">${num(d.daily[0]?.precipitation, 1)}<span> mm</span></div><p>${t("today")}</p>${this._hourChart(d.hourly.filter((h) => new Date(h.datetime) > new Date()).slice(0, 24), "precipitation")}<button class="full-button" data-action="detail" data-value="radar">${t("radar")} ↗</button>`;
     } else if (type === "source") {
-      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend." : "Wind maps load from Windy on request. Sun and moon information is calculated locally."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.0.0 ↗</a>`;
+      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend." : "Wind maps load from Windy on request. Sun and moon information is calculated locally."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.1.0 ↗</a>`;
     } else {
       const map = {
           feels: [c.apparent_temperature, "°C"],
@@ -902,7 +1000,8 @@ class AtmosphereCard extends HTMLElement {
         this._radarFrame = Number(e.target.value);
         this._paintRadar();
       };
-      this._radarPlaying = !this._reduced.matches;
+      this._zoomRadar();
+      this._radarPlaying ??= !this._reduced.matches;
       this._startRadar();
     }
   }
@@ -935,6 +1034,14 @@ class AtmosphereCard extends HTMLElement {
   }
   _startRadar() {
     clearInterval(this._radarTimer);
+    const play = this.shadowRoot.querySelector('[data-action="radar-play"]');
+    if (play) {
+      play.textContent = this._radarPlaying ? "Ⅱ" : "▶";
+      play.setAttribute(
+        "aria-label",
+        this._t(this._radarPlaying ? "pause" : "play"),
+      );
+    }
     this._paintRadar();
     if (this._radarPlaying && this._data.radar.frames.length > 0)
       this._radarTimer = setInterval(() => {
@@ -955,7 +1062,7 @@ class AtmosphereCard extends HTMLElement {
       location: "coordinates",
       metricWind: "km/h",
       metricTemp: "°C",
-      zoom: "7",
+      zoom: layer === "radar" ? "10" : "9",
       overlay: layer,
       product: "ecmwf",
       level: "surface",
@@ -971,6 +1078,166 @@ class AtmosphereCard extends HTMLElement {
       block: "nearest",
       behavior: this._reduced.matches ? "instant" : "smooth",
     });
+  }
+  _zoomRadar() {
+    const layers = this.shadowRoot.querySelector(".radar-layers");
+    if (!layers) return;
+    const center = this._data.radar.center || [0.5, 0.5];
+    const x = valid(center[0]) ? clamp(center[0], 0, 1) : 0.5,
+      y = valid(center[1]) ? clamp(center[1], 0, 1) : 0.5;
+    layers.style.transform = `translate(${50 - x * 100}%, ${50 - y * 100}%) scale(${this._radarZoom})`;
+    layers.style.transformOrigin = `${x * 100}% ${y * 100}%`;
+  }
+  _applyVisibility() {
+    const root = this.shadowRoot,
+      show = this._config.show;
+    root
+      .querySelectorAll("[data-section]")
+      .forEach(
+        (el) =>
+          (el.hidden =
+            Array.isArray(show) && !show.includes(el.dataset.section)),
+      );
+    for (const selector of [".metrics", ".small-metrics"]) {
+      const el = root.querySelector(selector);
+      const count = [...el.children].filter((c) => !c.hidden).length;
+      el.hidden = count === 0;
+      el.dataset.count = count;
+    }
+    for (const pair of [
+      [".warning", ".hourly"],
+      [".daily", ".metrics"],
+      [".radar-panel", ".moon-panel"],
+    ]) {
+      const [a, b] = pair.map((s) => root.querySelector(s));
+      if (a.hidden && !b.hidden) b.style.gridColumn = "1 / -1";
+      if (b.hidden && !a.hidden) a.style.gridColumn = "1 / -1";
+    }
+  }
+  _appTrackers() {
+    const states = this._hass?.states || {},
+      user = this._hass?.user?.id;
+    if (!user) return [];
+    const ids = new Set(
+      Object.values(states)
+        .filter(
+          (e) =>
+            e.entity_id.startsWith("person.") && e.attributes.user_id === user,
+        )
+        .flatMap((e) => e.attributes.device_trackers || []),
+    );
+    return [...ids]
+      .map((id) => states[id])
+      .filter(
+        (e) =>
+          e?.attributes.source_type === "gps" &&
+          valid(e.attributes.latitude) &&
+          valid(e.attributes.longitude),
+      );
+  }
+  _trackerFresh(e) {
+    const a = e?.attributes || {};
+    return (
+      e &&
+      !["unknown", "unavailable"].includes(e.state) &&
+      valid(a.latitude) &&
+      valid(a.longitude) &&
+      valid(a.gps_accuracy) &&
+      a.gps_accuracy >= 0 &&
+      a.gps_accuracy <= 250 &&
+      Date.now() - new Date(e.last_updated).getTime() <= 15 * 60000
+    );
+  }
+  _chooseAppLocation() {
+    const trackers = this._appTrackers();
+    if (trackers.length === 1 && this._trackerFresh(trackers[0]))
+      return this._useTracker(trackers[0].entity_id);
+    const dialog = this.shadowRoot.querySelector("dialog");
+    dialog.querySelector(".dialog-inner").innerHTML =
+      `<div class="dialog-header"><h2 id="detail-title">${this._t("chooseDevice")}</h2><button class="close" data-action="close" aria-label="${this._t("close")}">×</button></div>${trackers.map((e) => `<button class="tracker-choice" data-action="use-tracker" data-value="${esc(e.entity_id)}" ${this._trackerFresh(e) ? "" : "disabled"}><strong>${esc(e.attributes.friendly_name || e.entity_id)}</strong><span>${this._t("reported")} ${this._time(e.last_updated)} · ±${num(e.attributes.gps_accuracy)} m</span></button>`).join("")}<p>${this._t("staleLocation")}</p>`;
+    if (!dialog.open) dialog.showModal();
+  }
+  async _useTracker(entityId) {
+    const entity = this._appTrackers().find((e) => e.entity_id === entityId);
+    if (!this._trackerFresh(entity)) {
+      this._locationError = this._t("staleLocation");
+      this._render();
+      return;
+    }
+    this.shadowRoot.querySelector("dialog").close();
+    await this._loadLocation(
+      entity.attributes,
+      `${entity.attributes.friendly_name || entityId} · ${this._t("reported")} ${this._time(entity.last_updated)} · ±${num(entity.attributes.gps_accuracy)} m`,
+    );
+  }
+  async _locate() {
+    if (this._locationBusy) return;
+    const generation = this._locationGeneration;
+    if (
+      (window.externalApp || window.webkit?.messageHandlers?.externalBus) &&
+      this._appTrackers().length
+    )
+      return this._chooseAppLocation();
+    this._locationBusy = true;
+    this._locationError = null;
+    this._render();
+    try {
+      const position = await new Promise((resolve, reject) =>
+        navigator.geolocation
+          ? navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              maximumAge: 60000,
+              timeout: 12000,
+            })
+          : reject({ code: 2 }),
+      );
+      if (generation !== this._locationGeneration) return;
+      if (!valid(position.coords.accuracy) || position.coords.accuracy > 1000)
+        throw { code: 2 };
+      await this._loadLocation(
+        position.coords,
+        `${this._t("currentLocation")} · ±${num(position.coords.accuracy)} m`,
+      );
+    } catch (error) {
+      this._locationError = this._t(
+        error.code === 1 ? "locationDenied" : "locationFailed",
+      );
+    } finally {
+      this._locationBusy = false;
+      this._render();
+    }
+  }
+  async _loadLocation(coords, note) {
+    const generation = this._locationGeneration;
+    this._locationBusy = true;
+    this._locationError = null;
+    this._render();
+    try {
+      const coordinate = {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      };
+      const data = await this._hass.callWS({
+        type: "atmosphere/location",
+        ...coordinate,
+        language: this._data?.language || "nl",
+      });
+      if (generation !== this._locationGeneration) return;
+      this._locationGeneration++;
+      this._deviceCoords = coordinate;
+      this._data = data;
+      this._locationNote = note;
+      this._error = null;
+    } catch (error) {
+      this._locationError = this._t(
+        error.code === "unsupported_location"
+          ? "unsupported"
+          : "locationFailed",
+      );
+    } finally {
+      this._locationBusy = false;
+      this._render();
+    }
   }
   _hourChart(hours, field = "temperature") {
     const values = hours.map((h) => h[field]).filter(valid);
@@ -1023,23 +1290,41 @@ class AtmosphereCardEditor extends HTMLElement {
       (e) =>
         e.entity_id.startsWith("weather.") && e.attributes.atmosphere_entry_id,
     );
-    this.shadowRoot.innerHTML = `<style>label{display:grid;gap:8px;margin:16px 0}select,input{padding:12px;font:inherit;color:var(--primary-text-color);background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:8px}</style><label>Atmosphere location<select id="entity">${entities.map((e) => `<option value="${esc(e.entity_id)}" ${this._config.entity === e.entity_id ? "selected" : ""}>${esc(e.attributes.friendly_name || e.entity_id)}</option>`).join("")}</select></label><label>Name<input id="name" value="${esc(this._config.name || "")}"/></label><label>Card language<select id="language"><option value="auto">Location language</option><option value="nl">Nederlands</option><option value="en">English</option></select></label>`;
-    this.shadowRoot.querySelector("#language").value =
-      this._config.language || "auto";
-    this.shadowRoot.querySelectorAll("input,select").forEach((el) =>
+    this.shadowRoot.innerHTML = `<style>.section-toggle{display:flex;gap:8px;margin:8px 0}fieldset{border:1px solid var(--divider-color);border-radius:10px}label{display:grid;gap:8px;margin:16px 0}select,input{padding:12px;font:inherit;color:var(--primary-text-color);background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:8px}</style><label>Atmosphere location<select id="entity">${entities.map((e) => `<option value="${esc(e.entity_id)}" ${this._config.entity === e.entity_id ? "selected" : ""}>${esc(e.attributes.friendly_name || e.entity_id)}</option>`).join("")}</select></label><label>Name<input id="name" value="${esc(this._config.name || "")}"/></label><label>Card language<select id="language"><option value="auto">Location language</option><option value="nl">Nederlands</option><option value="en">English</option></select></label><fieldset><legend>Visible panels</legend>${sections.map((key) => `<label class="section-toggle"><input type="checkbox" data-section-choice="${key}" ${!Array.isArray(this._config.show) || this._config.show.includes(key) ? "checked" : ""}/>${words.en[key] || (key === "sun" ? "Sunrise and sunset" : key)}</label>`).join("")}</fieldset>`;
+    this.shadowRoot.querySelectorAll("[data-section-choice]").forEach((el) =>
       el.addEventListener("change", () => {
-        const config = { ...this._config, [el.id]: el.value };
-        if (el.id === "language" && el.value === "auto") delete config.language;
-        this._config = config;
+        const show = [
+          ...this.shadowRoot.querySelectorAll("[data-section-choice]:checked"),
+        ].map((e) => e.dataset.sectionChoice);
+        this._config = { ...this._config, show };
         this.dispatchEvent(
           new CustomEvent("config-changed", {
-            detail: { config },
+            detail: { config: this._config },
             bubbles: true,
             composed: true,
           }),
         );
       }),
     );
+    this.shadowRoot.querySelector("#language").value =
+      this._config.language || "auto";
+    this.shadowRoot
+      .querySelectorAll("input:not([type=checkbox]),select")
+      .forEach((el) =>
+        el.addEventListener("change", () => {
+          const config = { ...this._config, [el.id]: el.value };
+          if (el.id === "language" && el.value === "auto")
+            delete config.language;
+          this._config = config;
+          this.dispatchEvent(
+            new CustomEvent("config-changed", {
+              detail: { config },
+              bubbles: true,
+              composed: true,
+            }),
+          );
+        }),
+      );
   }
 }
 if (!customElements.get("atmosphere-card"))

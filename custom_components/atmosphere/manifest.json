@@ -1,0 +1,13 @@
+{
+  "domain": "atmosphere",
+  "name": "Atmosphere Weather",
+  "codeowners": ["@TwilightDuck"],
+  "config_flow": true,
+  "dependencies": ["http", "frontend", "lovelace"],
+  "documentation": "https://github.com/TwilightDuck/ha-atmosphere",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/TwilightDuck/ha-atmosphere/issues",
+  "requirements": ["irm-kmi-api==1.1.1"],
+  "version": "1.1.0"
+}

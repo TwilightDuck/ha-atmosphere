@@ -64,7 +64,7 @@ button h2 {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  min-height: 500px;
+  min-height: 0;
   background: #3674a9;
 }
 .sky {
@@ -134,7 +134,7 @@ button h2 {
   background-image: url("data:image/svg+xml,CLOUD_TEXTURE");
   background-size: 100% 100%;
   opacity: 0.5;
-  animation: cloud-drift 95s ease-in-out infinite alternate;
+
   will-change: transform;
 }
 .clouds.near {
@@ -143,8 +143,7 @@ button h2 {
   width: 160%;
   height: 800px;
   opacity: 0.24;
-  animation-duration: 135s;
-  animation-direction: alternate-reverse;
+
   transform: scaleX(-1);
 }
 .horizon {
@@ -1252,7 +1251,7 @@ dialog::backdrop {
     grid-row: span 1;
   }
   .day {
-    grid-template-columns: 56px 26px 27px 1fr 28px;
+    grid-template-columns: 68px 26px 27px 1fr 28px;
     gap: 6px;
     padding: 17px 0;
     min-height: 79px;
@@ -1513,5 +1512,172 @@ dialog::backdrop {
   }
   .panel-header h2 {
     font-size: 12px;
+  }
+}
+
+[hidden] {
+  display: none !important;
+}
+.location-pin {
+  border: 1px solid #d1e4f52b;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  background: #ffffff10;
+  display: grid;
+  place-items: center;
+  color: #eaf7ff;
+  flex: 0 0 34px;
+  padding: 0;
+}
+.location-pin.selected {
+  background: #b4e3ff45;
+}
+.home-location {
+  background: none;
+  font-size: 24px;
+  padding: 0 4px;
+}
+.location-status {
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px 0 16px;
+}
+.location-status button {
+  margin-left: 12px;
+  background: #ffffff15;
+  border-radius: 20px;
+  padding: 6px 12px;
+}
+.location-note {
+  font-size: 11px;
+  color: #dbe9f4;
+  text-align: center;
+  margin: -20px 0 22px;
+}
+.tracker-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 15px 0;
+  border-top: 1px solid #ffffff25;
+  background: none;
+  text-align: left;
+}
+.tracker-choice span {
+  font-size: 12px;
+  color: #b8cfe3;
+}
+.tracker-choice:disabled {
+  opacity: 0.4;
+}
+.radar-layers {
+  position: absolute;
+  inset: 0;
+}
+.radar-zoom-controls {
+  display: flex;
+  gap: 6px;
+  position: absolute;
+  z-index: 2;
+  right: 35px;
+  margin-top: 12px;
+}
+.radar-zoom-controls button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #d7edffe6;
+  color: #173449;
+  font-size: 24px;
+  box-shadow: 0 2px 6px #0002;
+}
+.radar-stage {
+  aspect-ratio: 640/490;
+}
+@container (max-width:300px) {
+  .toolbar {
+    gap: 4px;
+  }
+  .hero-range {
+    font-size: 12px;
+  }
+  .condition {
+    font-size: 17px;
+  }
+  .hero h1 {
+    font-size: 26px;
+  }
+  .temperature {
+    font-size: 80px;
+  }
+  .panel {
+    padding: 14px 11px;
+  }
+  .day {
+    grid-template-columns: minmax(39px, 1fr) 22px 25px minmax(18px, 1fr) 25px;
+    gap: 4px;
+    font-size: 14px;
+  }
+  .day-name {
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+  .metrics .panel {
+    min-height: 125px;
+  }
+  .small-metrics {
+    grid-template-columns: 1fr;
+  }
+  .small-metrics .panel:last-child {
+    grid-column: auto;
+  }
+  .hour {
+    flex-basis: 38px;
+  }
+  .panel-header {
+    flex-wrap: wrap;
+  }
+  .warning-title,
+  .has-warning .warning-title {
+    font-size: 19px;
+  }
+  .warning-line {
+    font-size: 11px;
+  }
+  .moon {
+    width: 80px;
+    height: 80px;
+    flex-basis: 80px;
+  }
+  .moon-phase {
+    font-size: 17px;
+  }
+  .moon-date {
+    font-size: 15px;
+  }
+  .sun-arc {
+    height: 40px;
+  }
+  footer {
+    flex-wrap: wrap;
+  }
+}
+
+.metrics[data-count="1"],
+.small-metrics[data-count="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.small-metrics[data-count="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@container (max-width:300px) {
+  .small-metrics[data-count] {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
