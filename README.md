@@ -57,7 +57,7 @@ The integration registers its bundled card resource automatically for storage-mo
 ```yaml
 lovelace:
   resources:
-    - url: /atmosphere/atmosphere-card.js?v=1.4.0
+    - url: /atmosphere/atmosphere-card.js?v=1.4.1
       type: module
 ```
 
@@ -96,7 +96,7 @@ Supported panels are `current`, `warnings`, `hourly`, `daily`, `feels`, `sun`, `
 
 ## Current device location
 
-Tap the **⌖** button to request current-location weather; **⌂** returns to the saved location. This does not change the saved integration entry or its entities.
+Tap the **⌖** button to request current-location weather; **⌂** returns to the saved location. The close button dismisses location messages or cancels a pending lookup; late results cannot reopen it. This does not change the saved integration entry or its entities.
 
 Regular HTTPS browsers request one GPS fix using their location permission. Home Assistant Companion does not expose a documented frontend command that forces a fresh native GPS fix, so the app path reads GPS trackers linked to the **signed-in viewer's person**, never a globally fixed phone. A viewer with multiple GPS devices gets a picker. The fallback shows its source, last reported time, and accuracy. It rejects unavailable, missing, older-than-15-minute, or worse-than-250-metre app locations. Refresh the Companion app with **Exact** location enabled if its location is old; different people should use their own HA accounts and linked person records. A shared login cannot identify which physical phone is viewing the card.
 

@@ -104,18 +104,23 @@ test("interactive radar and wind load only on request and switch directly", asyn
     "src",
     /overlay=radar/,
   );
-  await page.getByRole("button", { name: "Windkaart", exact: true }).click();
+  await page
+    .locator(".map-switch")
+    .getByRole("button", { name: "Wind", exact: true })
+    .click();
   await expect(page.locator("dialog iframe")).toHaveAttribute(
     "src",
     /overlay=wind/,
   );
-  await page
-    .getByRole("button", { name: "Neerslag · Verwachting", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Verwachting", exact: true }).click();
   await expect(page.locator("dialog iframe")).toHaveAttribute(
     "src",
     /overlay=rain/,
   );
+  for (const button of await page.locator(".map-switch button").all()) {
+    await expect(button).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(button).toHaveCSS("border-radius", "0px");
+  }
   await page.keyboard.press("Escape");
   await expect(page.locator("dialog")).not.toBeVisible();
   await expect(page.locator("dialog iframe")).toHaveCount(0);
@@ -783,4 +788,70 @@ test("solar, heat and new-moon events stay tied to data and never invent a futur
     /new-moon/,
   );
   await expect(page.locator(".sky-event")).toHaveCSS("opacity", "0");
+});
+
+test("location permission errors can be dismissed and retried", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition(_success, failure) {
+          failure({ code: 1 });
+        },
+      },
+    }),
+  );
+  await open(page);
+  const locate = page.getByRole("button", {
+    name: "Huidige locatie",
+    exact: true,
+  });
+  await locate.click();
+  await expect(page.locator(".location-status")).toContainText(
+    "Locatietoestemming is nodig",
+  );
+  await page
+    .getByRole("button", { name: "Locatiemelding sluiten", exact: true })
+    .click({ timeout: 1500 });
+  await expect(page.locator(".location-status")).toHaveCount(0);
+  await expect(locate).toBeFocused();
+  await page.getByRole("button", { name: "Wind", exact: true }).first().click();
+  await expect(page.locator(".location-status")).toHaveCount(0);
+  await locate.click();
+  await expect(page.locator(".location-status")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Malle", exact: true }),
+  ).toBeVisible();
+});
+
+test("dismissing a pending location lookup ignores its late error", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition(_success, failure) {
+          window.pendingLocationError = failure;
+        },
+      },
+    }),
+  );
+  await open(page);
+  await page
+    .getByRole("button", { name: "Huidige locatie", exact: true })
+    .click();
+  await expect(page.locator(".location-status")).toContainText(
+    "Je locatie wordt opgehaald",
+  );
+  await page
+    .getByRole("button", { name: "Locatiemelding sluiten", exact: true })
+    .click({ timeout: 1500 });
+  await page.evaluate(() => window.pendingLocationError({ code: 1 }));
+  await expect(page.locator(".location-status")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Huidige locatie", exact: true }),
+  ).toHaveAttribute("aria-busy", "false");
 });
