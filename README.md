@@ -15,6 +15,31 @@ A standalone Home Assistant weather integration with an animated sky and a compa
 - Locally calculated sun and moon information, NASA lunar terrain with phase lighting, illumination, moonrise/set, and the next full-moon date.
 - Responsive layouts down to compact 200–240 px cards, configurable panels, keyboard-accessible details, a visual editor, Dutch and English card text, reduced-motion support, and an animation pause button. KMI forecast/warning text supports Dutch, English, French, and German.
 
+## Weather and event animations
+
+Each supported weather state has at least two complementary effects. Sky motion shares one active-time clock; hidden tabs, the pause control, and reduced motion stop it without catch-up. Readings stay still. The condition icon moves gently, pointer mode changes glide between selections and briefly reveal the forecast icons, and keyboard changes stay immediate.
+
+| Weather | Effects |
+| --- | --- |
+| Sunny | Moving sunbeams and drifting light motes |
+| Clear night | Twinkling stars and occasional shooting stars |
+| Partly cloudy | Cloud parallax and moving illuminated cloud edges |
+| Cloudy | Cloud parallax and a rolling cloud bank |
+| Rain | Slanted rain and expanding rain ripples |
+| Heavy rain | Denser, faster rain and ripples |
+| Snow | Distant falling snow and larger swirling foreground flakes |
+| Sleet | Rain streaks and snowflakes together |
+| Thunderstorms | Branching lightning and broad cloud illumination |
+| Thunderstorms with rain | Branching lightning and rain streaks |
+| Fog | Moving mist ribbons and rolling low cloud |
+| Windy / windy variant | Wind streams and faster gust-driven cloud parallax |
+| Exceptional | Cloud parallax and wind streams |
+| Hail | Falling pellets and rebounds |
+
+Dawn adds a warm horizon bloom and rising rays; daytime adds drifting daylight and solar haze; dusk adds twilight ribbons and horizon afterglow; night adds airglow and lunar haze. Weather remains visible over the time-of-day lighting.
+
+Special effects are driven by weather and astronomical data: sunrise/sunset within 25 minutes, a full moon at 99.5% illumination or more, a new moon at 1% or less, incoming rain within 20 minutes, active official warnings, heat at 30°C, frost at 0°C, and gusts from 50 km/h. Each gets a sky accent and a gentle cue on its related UI heading. New moon adds faint stars; it does not draw an eclipse. There are no holiday, birthday, aurora or eclipse predictions. Lightning is one low-contrast, smoothly fading cue per 15 active seconds, never a strobe.
+
 ## Install
 
 Requires **Home Assistant 2026.10 or newer**. KMI forecast coverage is **Belgium and Luxembourg**. No API keys are needed.
@@ -32,7 +57,7 @@ The integration registers its bundled card resource automatically for storage-mo
 ```yaml
 lovelace:
   resources:
-    - url: /atmosphere/atmosphere-card.js?v=1.3.0
+    - url: /atmosphere/atmosphere-card.js?v=1.4.0
       type: module
 ```
 

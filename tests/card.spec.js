@@ -570,3 +570,217 @@ test("detail panels preserve focus and motion preferences across pointer and key
   await page.locator(".rain-total").click();
   await expect(dialog).toContainText("mm");
 });
+
+test("all weather scenes and time periods have multiple moving layers", async ({
+  page,
+}) => {
+  const time = Date.now();
+  await page.clock.install({ time: new Date(time) });
+  await page.clock.pauseAt(new Date(time + 1000));
+  const weather = [
+    "sunny",
+    "clear-night",
+    "partlycloudy",
+    "cloudy",
+    "rainy",
+    "pouring",
+    "snowy",
+    "snowy-rainy",
+    "lightning",
+    "lightning-rainy",
+    "fog",
+    "windy",
+    "windy-variant",
+    "hail",
+    "exceptional",
+  ];
+  for (const condition of weather) {
+    await open(page, (d) => ({
+      ...d,
+      current: { ...d.current, condition },
+      sun: {
+        ...d.sun,
+        dawn: new Date(time - 7200000).toISOString(),
+        sunrise: new Date(
+          time + (condition === "clear-night" ? 3600000 : -3600000),
+        ).toISOString(),
+        sunset: new Date(time + 7200000).toISOString(),
+        dusk: new Date(time + 10800000).toISOString(),
+      },
+    }));
+    await page.clock.runFor(100);
+    const layers = page.locator(
+      ".clouds.far,.clouds.near,.sky-aura,.sky-ribbon,.live-weather-icon",
+    );
+    const before = await layers.evaluateAll((nodes) =>
+      nodes.map((n) => getComputedStyle(n).transform),
+    );
+    await page.clock.runFor(900);
+    const after = await layers.evaluateAll((nodes) =>
+      nodes.map((n) => getComputedStyle(n).transform),
+    );
+    expect(
+      after.filter((value, i) => value !== before[i]).length,
+      condition,
+    ).toBeGreaterThanOrEqual(4);
+    const labels = await page
+      .locator(".atmosphere")
+      .getAttribute("data-effects");
+    expect(labels.split(" ").length).toBeGreaterThanOrEqual(4);
+    if (["rainy", "snowy", "hail", "fog", "lightning"].includes(condition)) {
+      await page.screenshot({
+        path: `screenshots/motion-${condition}.png`,
+        fullPage: false,
+      });
+    }
+  }
+  for (const period of ["dawn", "day", "dusk", "night"]) {
+    const now = time + 30000;
+    await open(page, (d) => ({
+      ...d,
+      sun: {
+        dawn: new Date(
+          now - (period === "night" ? -7200000 : 3600000),
+        ).toISOString(),
+        sunrise: new Date(
+          now + (period === "dawn" || period === "night" ? 3600000 : -7200000),
+        ).toISOString(),
+        sunset: new Date(
+          now + (period === "dusk" ? -3600000 : 7200000),
+        ).toISOString(),
+        dusk: new Date(now + 10800000).toISOString(),
+      },
+    }));
+    // Keep the simulated clock inside each astronomical interval.
+    await page.clock.runFor(100);
+    await expect(page.locator(".atmosphere")).toHaveAttribute(
+      "data-period",
+      period,
+    );
+  }
+});
+
+test("special effects use actual weather, warning and lunar state; keyboard mode selection keeps focus", async ({
+  page,
+}) => {
+  const now = +new Date("2026-10-26T08:00:00Z");
+  await page.clock.install({ time: new Date(now) });
+  await page.clock.pauseAt(new Date(now + 1000));
+  await open(page, (d) => ({
+    ...d,
+    warnings: [
+      {
+        ...d.warnings[0],
+        starts_at: new Date(now - 60000).toISOString(),
+        ends_at: new Date(now + 3600000).toISOString(),
+      },
+    ],
+    rain: [
+      { datetime: new Date(now + 600000).toISOString(), precipitation: 0.5 },
+    ],
+    current: {
+      ...d.current,
+      condition: "cloudy",
+      temperature: -2,
+      wind_gust_speed: 60,
+    },
+    sun: {
+      ...d.sun,
+      sunrise: new Date(now - 36000000).toISOString(),
+      sunset: new Date(now - 3600000).toISOString(),
+      dusk: new Date(now - 1800000).toISOString(),
+    },
+  }));
+  await expect(page.locator(".atmosphere")).toHaveAttribute(
+    "data-events",
+    /warning/,
+  );
+  for (const event of ["incoming-rain", "full-moon", "frost", "gusts"])
+    await expect(page.locator(".atmosphere")).toHaveAttribute(
+      "data-events",
+      new RegExp(event),
+    );
+  const wind = page.getByRole("button", { name: "Wind", exact: true }).first();
+  await wind.press("Enter");
+  await expect(wind).toBeFocused();
+  await expect(wind).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".segmented")).toHaveAttribute(
+    "data-instant",
+    "true",
+  );
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const layer = page.locator(".sky-aura");
+  const before = await layer.evaluate((n) => getComputedStyle(n).transform);
+  await page.clock.runFor(5000);
+  expect(await layer.evaluate((n) => getComputedStyle(n).transform)).toBe(
+    before,
+  );
+});
+
+test("solar, heat and new-moon events stay tied to data and never invent a future warning", async ({
+  page,
+}) => {
+  const now = +new Date("2026-10-26T12:00:00Z");
+  await page.clock.install({ time: new Date(now) });
+  await page.clock.pauseAt(new Date(now + 1000));
+  for (const event of ["sunrise", "sunset", "heat"]) {
+    await open(page, (d) => ({
+      ...d,
+      warnings: [
+        {
+          ...d.warnings[0],
+          starts_at: new Date(now + 3600000).toISOString(),
+          ends_at: new Date(now + 7200000).toISOString(),
+        },
+      ],
+      rain: [],
+      current: {
+        ...d.current,
+        temperature: event === "heat" ? 31 : 15,
+        wind_gust_speed: 10,
+      },
+      sun: {
+        ...d.sun,
+        dawn: new Date(now - 3600000).toISOString(),
+        sunrise: new Date(
+          now + (event === "sunrise" ? 300000 : -7200000),
+        ).toISOString(),
+        sunset: new Date(
+          now + (event === "sunset" ? 300000 : 7200000),
+        ).toISOString(),
+        dusk: new Date(now + 10800000).toISOString(),
+      },
+    }));
+    await expect(page.locator(".atmosphere")).toHaveAttribute(
+      "data-events",
+      new RegExp(event),
+    );
+    expect(
+      await page.locator(".atmosphere").getAttribute("data-events"),
+    ).not.toMatch(/warning/);
+  }
+  await page.clock.setSystemTime(new Date("2026-11-09T22:00:00Z"));
+  await open(page, (d) => ({
+    ...d,
+    warnings: [],
+    rain: [],
+    current: {
+      ...d.current,
+      condition: "clear-night",
+      temperature: 15,
+      wind_gust_speed: 10,
+    },
+    sun: {
+      ...d.sun,
+      sunrise: "2026-11-09T07:00:00Z",
+      sunset: "2026-11-09T16:00:00Z",
+      dusk: "2026-11-09T17:00:00Z",
+    },
+  }));
+  await page.clock.runFor(100);
+  await expect(page.locator(".atmosphere")).toHaveAttribute(
+    "data-events",
+    /new-moon/,
+  );
+  await expect(page.locator(".sky-event")).toHaveCSS("opacity", "0");
+});

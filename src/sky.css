@@ -271,3 +271,75 @@
     height: 76px;
   }
 }
+/* Light is layered separately so it drifts without repainting the forecast. */
+.sky-aura,
+.sky-ribbon,
+.sky-event {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+}
+.sky-aura {
+  inset: -15%;
+  background: radial-gradient(ellipse at 65% 12%, #fff6d0, transparent 58%);
+}
+.sky-ribbon {
+  inset: 20% -20% -30%;
+  background: radial-gradient(ellipse at 50% 50%, #cbe9ff, transparent 65%);
+}
+.atmosphere[data-period="night"] .sky-aura {
+  background: radial-gradient(ellipse at 53% 25%, #bdd7ff, transparent 48%);
+}
+.atmosphere[data-period="dawn"] .sky-aura {
+  background: radial-gradient(ellipse at 60% 80%, #ffd19b, transparent 65%);
+}
+.atmosphere[data-period="dusk"] .sky-aura {
+  background: radial-gradient(ellipse at 60% 80%, #edb4bd, transparent 65%);
+}
+.atmosphere[data-period="dawn"] .rays {
+  opacity: 0.3;
+}
+.atmosphere[data-period="dusk"] .sky-ribbon {
+  background: radial-gradient(ellipse at 50% 50%, #e7b5cf, transparent 65%);
+}
+.atmosphere[data-condition="fog"] .clouds {
+  opacity: 0.6;
+}
+.atmosphere[data-condition="partlycloudy"] .clouds.near {
+  opacity: 0.5;
+}
+.sky-event {
+  right: 46%;
+  top: 26px;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    transparent 37%,
+    #c5ddff 50%,
+    transparent 68%
+  );
+}
+.atmosphere[data-events~="sunrise"] .sky-event,
+.atmosphere[data-events~="sunset"] .sky-event,
+.atmosphere[data-events~="heat"] .sky-event,
+.atmosphere[data-events~="warning"] .sky-event {
+  inset: 10% -10% -20%;
+  width: auto;
+  height: auto;
+  background: radial-gradient(ellipse at 75% 45%, #edcf9f, transparent 60%);
+}
+
+@container (max-width:580px) {
+  .sky-event {
+    right: 20px;
+    top: 68px;
+    width: 76px;
+    height: 76px;
+  }
+}
+
+.atmosphere[data-condition="partlycloudy"] .clouds.near {
+  filter: drop-shadow(12px -7px 9px #fffdf230);
+}

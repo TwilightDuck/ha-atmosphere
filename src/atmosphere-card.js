@@ -1,5 +1,6 @@
 import SunCalc from "suncalc";
 import { drawMoon } from "./moon.js";
+import { skyState, drawSkyAccents } from "./sky-effects.js";
 import { styles } from "./styles.js";
 
 import { glyph } from "./icons.js";
@@ -284,7 +285,7 @@ class AtmosphereCard extends HTMLElement {
     this._paused = false;
     this._fetching = false;
     this._reduced = matchMedia("(prefers-reduced-motion: reduce)");
-    this.shadowRoot.innerHTML = `<style>${styles}</style><ha-card><div class="atmosphere"><div class="sky" aria-hidden="true"><div class="sun-orb"></div><div class="rays"></div><div class="stars"></div><div class="clouds far"></div><div class="clouds near"></div><div class="clouds bank"></div><canvas class="sky-moon" width="240" height="240"></canvas><canvas class="precipitation"></canvas><div class="horizon"></div></div><div class="body"></div></div></ha-card><dialog aria-labelledby="detail-title"><div class="dialog-inner"></div></dialog>`;
+    this.shadowRoot.innerHTML = `<style>${styles}</style><ha-card><div class="atmosphere"><div class="sky" aria-hidden="true"><div class="sun-orb"></div><div class="rays"></div><div class="stars"></div><div class="clouds far"></div><div class="clouds near"></div><div class="clouds bank"></div><canvas class="sky-moon" width="240" height="240"></canvas><canvas class="precipitation"></canvas><div class="horizon"></div><div class="sky-aura"></div><div class="sky-ribbon"></div><div class="sky-event"></div></div><div class="body"></div></div></ha-card><dialog aria-labelledby="detail-title"><div class="dialog-inner"></div></dialog>`;
     this.shadowRoot.addEventListener("click", (e) => {
       const button = e.target.closest("[data-action]");
       if (button) {
@@ -505,6 +506,11 @@ class AtmosphereCard extends HTMLElement {
     const sky = this.shadowRoot.querySelector(".atmosphere");
     sky.dataset.condition = condition;
     sky.dataset.night = String(night);
+    const scene = skyState(d);
+    this._scene = scene;
+    sky.dataset.period = scene.period;
+    sky.dataset.events = scene.events.join(" ");
+    sky.dataset.effects = scene.effects.join(" ");
     const edge = Math.min(
       Math.abs(Date.now() - new Date(d.sun.sunrise)),
       Math.abs(Date.now() - new Date(d.sun.sunset)),
@@ -590,12 +596,12 @@ class AtmosphereCard extends HTMLElement {
       ${this._locationBusy || this._locationError ? `<div class="location-status" role="status">${esc(this._locationBusy ? this._t("locating") : this._locationError)}${!this._locationBusy && this._appTrackers().length ? `<button data-action="app-location">${this._t("appLocation")}</button>` : ""}</div>` : ""}
       ${this._locationNote ? `<div class="location-note">${esc(this._locationNote)}</div>` : ""}
       <div class="overview">
-      <header class="hero" data-section="current"><div class="hero-place"><h1>${esc(this._deviceCoords ? d.name : this._config.name || d.name)}</h1></div><div class="hero-reading"><div class="temperature">${this._temp(c.temperature)}</div><div class="hero-weather"><button class="condition" data-action="detail" data-value="current" aria-label="${this._t("current")}">${this._condition(condition)}${glyph("chevron", 14)}</button><div class="hero-range">${valid(c.apparent_temperature) ? `<span>${this._t("feels")} ${this._temp(c.apparent_temperature)}</span>` : ""}<span>${valid(today.temperature) ? `${this._t("high")} ${this._temp(today.temperature)}` : ""} ${valid(today.templow) ? `${this._t("low")} ${this._temp(today.templow)}` : ""}</span></div></div></div></header>
+      <header class="hero" data-section="current"><div class="hero-place"><h1>${esc(this._deviceCoords ? d.name : this._config.name || d.name)}</h1></div><div class="hero-reading"><div class="temperature">${this._temp(c.temperature)}</div><div class="hero-weather"><span class="live-weather-icon" aria-hidden="true">${icon(condition, night, 40)}</span><button class="condition" data-action="detail" data-value="current" aria-label="${this._t("current")}">${this._condition(condition)}${glyph("chevron", 14)}</button><div class="hero-range">${valid(c.apparent_temperature) ? `<span>${this._t("feels")} ${this._temp(c.apparent_temperature)}</span>` : ""}<span>${valid(today.temperature) ? `${this._t("high")} ${this._temp(today.temperature)}` : ""} ${valid(today.templow) ? `${this._t("low")} ${this._temp(today.templow)}` : ""}</span></div></div></div></header>
         <button data-section="warnings" class="panel warning ${warnings.length ? "has-warning" : ""} level-${warnings[0]?.level || 0}" data-action="detail" data-value="warnings"><h2><span aria-hidden="true">${glyph(warnings.length ? "warnings" : "check", 18)}</span>${this._t("warnings")}<span class="chevron" aria-hidden="true">${glyph("chevron", 14)}</span></h2>${warnings.length ? `<div class="warning-title">${esc(warnings[0].friendly_name)}</div><div class="warning-line"><span class="severity-dot"></span>${this._t(stale ? "stale" : new Date(warnings[0].starts_at) <= new Date() ? "active" : "upcoming")} · ${this._time(warnings[0].starts_at)} – ${this._time(warnings[0].ends_at)}</div><p class="warning-preview">${esc(warnings[0].text)}</p>${warnings.length > 1 ? `<span class="warning-count">+${warnings.length - 1}</span>` : ""}` : `<div class="warning-title">${this._t(stale ? "warnUnavailable" : "clear")}</div><div class="warning-line">KMI / IRM</div>`}</button>
       </div>
       <div class="forecast-grid">
 
-        <section data-section="hourly" class="panel hourly"><div class="panel-header"><h2>${this._t("hourly")}</h2><div class="segmented" role="group" aria-label="${this._t("hourly")}">${["temperature", "rain", "wind"].map((m, i) => `<button data-action="mode" data-value="${m}" aria-label="${this._t(m)}" aria-pressed="${this._mode === m}">${glyph(m, 18)}</button>`).join("")}</div></div><div class="hours">${hourly.map((f, i) => `<button class="hour" data-action="hour" data-value="${esc(f.datetime)}"><span>${i === 0 ? this._t("now") : this._time(f.datetime, { minute: undefined })}</span>${icon(f.condition, !f.is_daytime, 32)}<span class="chance">${valid(f.precipitation_probability) ? num(f.precipitation_probability) + "%" : "—"}</span><strong>${this._mode === "temperature" ? this._temp(f.temperature) : this._mode === "rain" ? num(f.precipitation, 1) : num(f.wind_speed)}</strong>${this._mode !== "temperature" ? `<small>${this._mode === "rain" ? "mm" : "km/h"}</small>` : ""}</button>`).join("")}</div></section>
+        <section data-section="hourly" class="panel hourly"><div class="panel-header"><h2>${this._t("hourly")}</h2><div class="segmented" data-mode="${this._mode}" role="group" aria-label="${this._t("hourly")}">${["temperature", "rain", "wind"].map((m, i) => `<button data-action="mode" data-value="${m}" aria-label="${this._t(m)}" aria-pressed="${this._mode === m}">${glyph(m, 18)}</button>`).join("")}</div></div><div class="hours">${hourly.map((f, i) => `<button class="hour" data-action="hour" data-value="${esc(f.datetime)}"><span>${i === 0 ? this._t("now") : this._time(f.datetime, { minute: undefined })}</span>${icon(f.condition, !f.is_daytime, 32)}<span class="chance">${valid(f.precipitation_probability) ? num(f.precipitation_probability) + "%" : "—"}</span><strong>${this._mode === "temperature" ? this._temp(f.temperature) : this._mode === "rain" ? num(f.precipitation, 1) : num(f.wind_speed)}</strong>${this._mode !== "temperature" ? `<small>${this._mode === "rain" ? "mm" : "km/h"}</small>` : ""}</button>`).join("")}</div></section>
         <section data-section="daily" class="panel daily"><h2>${d.daily.length} ${this._nl ? "dagen" : "days"}</h2><div class="days">${this._dailyRows(d.daily)}</div></section>
         <div class="observations"><div class="metrics">
           ${this._panel("feels", `<div class="metric-value">${this._temp(c.apparent_temperature)}</div><div class="metric-note">${this._nl ? "Werkelijk" : "Actual"} ${this._temp(c.temperature)}</div><div class="feels-line"><span style="left:${clamp(50 + ((c.apparent_temperature ?? c.temperature) - c.temperature) * 4, 5, 95)}%"></span></div>`)}
@@ -716,36 +722,65 @@ class AtmosphereCard extends HTMLElement {
       ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const condition = this._data?.current?.condition || "";
-    if (!moving) return;
+    if (!moving || !this._data) return;
     const night =
       this.shadowRoot.querySelector(".atmosphere").dataset.night === "true";
     const precipitation = /(rain|pour|snow|hail|lightning)/.test(condition),
-      snow = /snow|hail/.test(condition);
+      snow = condition === "snowy";
     const wind = clamp((this._data?.current?.wind_speed || 12) / 22, 0.55, 2.5);
     const clouds = this.shadowRoot.querySelectorAll(".clouds"),
       sun = this.shadowRoot.querySelector(".sun-orb"),
       rays = this.shadowRoot.querySelector(".rays"),
       horizon = this.shadowRoot.querySelector(".horizon");
-    const mode = precipitation
-      ? snow
-        ? "snow"
-        : "rain"
-      : night
-        ? "stars"
-        : wind > 1
-          ? "wind"
-          : "motes";
+    const aura = this.shadowRoot.querySelector(".sky-aura"),
+      ribbon = this.shadowRoot.querySelector(".sky-ribbon"),
+      eventGlow = this.shadowRoot.querySelector(".sky-event"),
+      heroIcon = this.shadowRoot.querySelector(".live-weather-icon"),
+      scene = this._scene || skyState(this._data);
+    const eventTargets = scene.events
+      .map((event) => {
+        const selector = {
+          warning: ".warning h2",
+          "incoming-rain": ".radar-panel h2",
+          sunrise: '[data-section="sun"] h2',
+          sunset: '[data-section="sun"] h2',
+          "full-moon": ".moon-panel h2",
+          "new-moon": ".moon-panel h2",
+          heat: ".condition",
+          frost: ".condition",
+          gusts: '[data-section="wind"] h2',
+        }[event];
+        return this.shadowRoot.querySelector(selector);
+      })
+      .filter(Boolean);
+    const has = (effect) => scene.effects.includes(effect);
+    const mode =
+      has("rain-streaks") || has("dense-rain")
+        ? "rain"
+        : has("falling-snow")
+          ? "snow"
+          : has("star-twinkle") || (scene.night && !precipitation)
+            ? "stars"
+            : has("wind-streams")
+              ? "wind"
+              : has("light-motes")
+                ? "motes"
+                : "none";
     const signature = `${mode}:${canvas.width}:${canvas.height}`;
     if (this._particleSignature !== signature) {
       this._particleSignature = signature;
       const count =
-        mode === "stars"
-          ? 95
-          : mode === "rain"
-            ? 125
-            : mode === "snow"
-              ? 80
-              : 32;
+        mode === "none"
+          ? 0
+          : mode === "stars"
+            ? 95
+            : mode === "rain"
+              ? has("dense-rain")
+                ? 210
+                : 125
+              : mode === "snow"
+                ? 80
+                : 32;
       this._particles = Array.from({ length: count }, (_, i) => ({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
@@ -756,19 +791,68 @@ class AtmosphereCard extends HTMLElement {
     }
     let last = null;
     const frame = (time) => {
+      // Media/visibility events can arrive after a queued frame; recheck before drawing.
+      if (
+        !this.isConnected ||
+        !this._visible ||
+        document.hidden ||
+        this._paused ||
+        this._reduced.matches
+      ) {
+        this._raf = null;
+        return;
+      }
       const dt = last === null ? 0 : Math.min((time - last) / 1000, 0.05);
       last = time;
       this._skyTime += dt;
       const t = this._skyTime,
         far = 0.5 - 0.5 * Math.cos(((t * wind) / 19) * Math.PI),
         near = 0.5 + 0.5 * Math.cos(((t * wind) / 28) * Math.PI);
-      clouds[0].style.transform = `translateX(${-8 + 20 * far}%) translateY(${Math.sin(t / 17) * 5}px) scale(${1.02 + 0.07 * far})`;
+      const cloudTravel = has("cloud-parallax") ? 24 : 20;
+      clouds[0].style.transform = `translateX(${-8 + cloudTravel * far}%) translateY(${Math.sin(t / 17) * 5}px) scale(${1.02 + 0.07 * far})`;
       clouds[1].style.transform = `translateX(${-12 + 25 * near}%) translateY(${Math.cos(t / 13) * 9}px) scale(${1.05 + 0.08 * near})`;
       clouds[2].style.transform = `translateX(${Math.sin((t * wind) / 23) * 13}%) translateY(${Math.sin(t / 11) * 13}px) scale(1.12)`;
       sun.style.transform = `translateX(-50%) translateY(${Math.sin(t / 12) * 5}px) scale(${1 + 0.04 * Math.sin(t / 9)})`;
       rays.style.transform = `rotate(${16 + Math.sin(t / 18) * 5}deg) translateX(${Math.sin(t / 10) * 15}px)`;
-      horizon.style.opacity = String(0.65 + 0.2 * Math.sin(t / 13));
+      if (has("cloud-edge-light"))
+        clouds[1].style.opacity = String(
+          0.35 + 0.15 * (0.5 + 0.5 * Math.sin(t / 6)),
+        );
+      if (has("rolling-cloud-bank"))
+        clouds[2].style.opacity = String(0.25 + 0.1 * Math.sin(t / 7));
+      if (has("gust-parallax"))
+        clouds[1].style.transform = `translateX(${-18 + 36 * near}%) scale(1.12)`;
+      if (has("sunbeams") || has("rising-rays"))
+        rays.style.opacity = String(0.16 + 0.08 * Math.sin(t / 6));
+      horizon.style.opacity = String(
+        (has("horizon-afterglow") ? 0.8 : 0.65) + 0.2 * Math.sin(t / 13),
+      );
       horizon.style.transform = `translateX(${Math.sin(t / 31) * 3}%)`;
+      aura.style.transform = `translateX(${Math.sin(t / 8) * 8}%) scale(${1 + Math.sin(t / 11) * 0.05})`;
+      aura.style.opacity = String(
+        (has("lunar-haze") ? 0.07 : has("solar-haze") ? 0.11 : 0.16) +
+          0.035 * Math.sin(t / 5),
+      );
+      ribbon.style.transform = `translateX(${Math.sin(t / (has("night-airglow") ? 14 : has("daylight-drift") ? 9 : 7)) * 10}%) translateY(${Math.cos(t / 6) * 8}px)`;
+      ribbon.style.opacity = String(
+        0.05 + 0.035 * (0.5 + 0.5 * Math.sin(t / 4)),
+      );
+      eventGlow.style.transform = `scale(${1.1 + 0.1 * Math.sin(t / 5)})`;
+      eventGlow.style.opacity = scene.events.some((event) =>
+        ["full-moon", "sunrise", "sunset", "heat", "warning"].includes(event),
+      )
+        ? String(0.1 + 0.06 * (0.5 + 0.5 * Math.sin(t / 4)))
+        : "0";
+      if (heroIcon) {
+        heroIcon.style.transform = `translateY(${Math.sin(t * (precipitation ? 1.6 : 0.7)) * (precipitation ? 2 : 1)}px) rotate(${Math.sin(t / 3) * (condition.includes("wind") ? 5 : 1.5)}deg)`;
+        heroIcon.style.opacity = String(
+          0.82 + 0.18 * (0.5 + 0.5 * Math.sin(t / 3)),
+        );
+      }
+      for (const target of eventTargets)
+        target.style.opacity = String(
+          0.8 + 0.2 * (0.5 + 0.5 * Math.sin(t / 3)),
+        );
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       for (const p of this._particles) {
         ctx.beginPath();
@@ -803,7 +887,7 @@ class AtmosphereCard extends HTMLElement {
           ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
           ctx.fill();
         } else {
-          p.y += dt * 570 * p.s;
+          p.y += dt * (has("dense-rain") ? 740 : 570) * p.s;
           p.x -= dt * 85 * wind;
           ctx.globalAlpha = 0.14 + p.s * 0.16;
           ctx.strokeStyle = "#d6edff";
@@ -837,6 +921,7 @@ class AtmosphereCard extends HTMLElement {
           ctx.globalAlpha = 1;
         }
       }
+      drawSkyAccents(ctx, scene, t, wind, canvas.width, canvas.height);
       this._raf = requestAnimationFrame(frame);
     };
     this._raf = requestAnimationFrame(frame);
@@ -862,7 +947,53 @@ class AtmosphereCard extends HTMLElement {
     }
     if (action === "mode") {
       this._mode = value;
+      const old = this.shadowRoot.querySelector(".segmented");
+      const focused = old?.contains(this.shadowRoot.activeElement);
+      const hours = this.shadowRoot.querySelector(".hours");
       this._render();
+      const next = this.shadowRoot.querySelector(".segmented");
+      if (old && next) {
+        next.replaceWith(old);
+        old.getBoundingClientRect();
+        old
+          .querySelectorAll("button")
+          .forEach((button) =>
+            button.setAttribute(
+              "aria-pressed",
+              String(button.dataset.value === value),
+            ),
+          );
+        old.dataset.instant = String(
+          !!this._keyboardAction || this._paused || this._reduced.matches,
+        );
+        old.dataset.mode = value;
+        if (focused)
+          old
+            .querySelector(`[data-value="${value}"]`)
+            .focus({ preventScroll: true });
+      }
+      if (
+        hours &&
+        !this._keyboardAction &&
+        !this._paused &&
+        !this._reduced.matches
+      ) {
+        this.shadowRoot
+          .querySelectorAll(".hour .weather-icon")
+          .forEach((el, i) =>
+            el.animate(
+              [
+                { opacity: 0.45, transform: "translateY(3px)" },
+                { opacity: 1, transform: "translateY(0)" },
+              ],
+              {
+                duration: 160,
+                delay: Math.min(i, 4) * 20,
+                easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+              },
+            ),
+          );
+      }
       return;
     }
     if (action === "close") {
@@ -1007,7 +1138,7 @@ class AtmosphereCard extends HTMLElement {
     } else if (type === "rain") {
       content = `<div class="detail-temperature">${num(d.daily[0]?.precipitation, 1)}<span> mm</span></div><p>${t("today")}</p>${this._hourChart(d.hourly.filter((h) => new Date(h.datetime) > new Date()).slice(0, 24), "precipitation")}<button class="full-button" data-action="detail" data-value="radar">${t("radar")} ↗</button>`;
     } else if (type === "source") {
-      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend. Maanbeelden: NASA/LRO." : "Wind maps load from Windy on request. Sun and moon information is calculated locally. Moon imagery: NASA/LRO."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.3.0 ↗</a>`;
+      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend. Maanbeelden: NASA/LRO." : "Wind maps load from Windy on request. Sun and moon information is calculated locally. Moon imagery: NASA/LRO."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.4.0 ↗</a>`;
     } else {
       const map = {
           feels: [c.apparent_temperature, "°C"],
