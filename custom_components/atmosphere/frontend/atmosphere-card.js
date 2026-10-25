@@ -1,13 +1,1555 @@
-var fe=Object.create;var de=Object.defineProperty;var xe=Object.getOwnPropertyDescriptor;var we=Object.getOwnPropertyNames;var be=Object.getPrototypeOf,ve=Object.prototype.hasOwnProperty;var ye=(p,e)=>()=>(e||p((e={exports:{}}).exports,e),e.exports);var _e=(p,e,t,a)=>{if(e&&typeof e=="object"||typeof e=="function")for(let n of we(e))!ve.call(p,n)&&n!==t&&de(p,n,{get:()=>e[n],enumerable:!(a=xe(e,n))||a.enumerable});return p};var $e=(p,e,t)=>(t=p!=null?fe(be(p)):{},_e(e||!p||!p.__esModule?de(t,"default",{value:p,enumerable:!0}):t,p));var pe=ye((le,ee)=>{(function(){"use strict";var p=Math.PI,e=Math.sin,t=Math.cos,a=Math.tan,n=Math.asin,i=Math.atan2,x=Math.acos,o=p/180,c=1e3*60*60*24,f=2440588,s=2451545;function u(r){return r.valueOf()/c-.5+f}function m(r){return new Date((r+.5-f)*c)}function k(r){return u(r)-s}var S=o*23.4397;function L(r,d){return i(e(r)*t(S)-a(d)*e(S),t(r))}function B(r,d){return n(e(d)*t(S)+t(d)*e(S)*e(r))}function R(r,d,l){return i(e(r),t(r)*e(d)-a(l)*t(d))}function Z(r,d,l){return n(e(d)*e(l)+t(d)*t(l)*t(r))}function q(r,d){return o*(280.16+360.9856235*r)-d}function Y(r){return r<0&&(r=0),2967e-7/Math.tan(r+.00312536/(r+.08901179))}function K(r){return o*(357.5291+.98560028*r)}function O(r){var d=o*(1.9148*e(r)+.02*e(2*r)+3e-4*e(3*r)),l=o*102.9372;return r+d+l+p}function J(r){var d=K(r),l=O(d);return{dec:B(l,0),ra:L(l,0)}}var h={};h.getPosition=function(r,d,l){var v=o*-l,w=o*d,_=k(r),b=J(_),$=q(_,v)-b.ra;return{azimuth:R($,w,b.dec),altitude:Z($,w,b.dec)}};var F=h.times=[[-.833,"sunrise","sunset"],[-.3,"sunriseEnd","sunsetStart"],[-6,"dawn","dusk"],[-12,"nauticalDawn","nauticalDusk"],[-18,"nightEnd","night"],[6,"goldenHourEnd","goldenHour"]];h.addTime=function(r,d,l){F.push([r,d,l])};var ne=9e-4;function he(r,d){return Math.round(r-ne-d/(2*p))}function re(r,d,l){return ne+(r+d)/(2*p)+l}function se(r,d,l){return s+r+.0053*e(d)-.0069*e(2*l)}function ue(r,d,l){return x((e(r)-e(d)*e(l))/(t(d)*t(l)))}function me(r){return-2.076*Math.sqrt(r)/60}function ge(r,d,l,v,w,_,b){var $=ue(r,l,v),M=re($,d,w);return se(M,_,b)}h.getTimes=function(r,d,l,v){v=v||0;var w=o*-l,_=o*d,b=me(v),$=k(r),M=he($,w),T=re(0,w,M),W=K(T),P=O(W),U=B(P,0),E=se(T,W,P),j,V,I,C,A,G,D={solarNoon:m(E),nadir:m(E-.5)};for(j=0,V=F.length;j<V;j+=1)I=F[j],C=(I[0]+b)*o,A=ge(C,w,_,U,M,W,P),G=E-(A-E),D[I[1]]=m(G),D[I[2]]=m(A);return D};function oe(r){var d=o*(218.316+13.176396*r),l=o*(134.963+13.064993*r),v=o*(93.272+13.22935*r),w=d+o*6.289*e(l),_=o*5.128*e(v),b=385001-20905*t(l);return{ra:L(w,_),dec:B(w,_),dist:b}}h.getMoonPosition=function(r,d,l){var v=o*-l,w=o*d,_=k(r),b=oe(_),$=q(_,v)-b.ra,M=Z($,w,b.dec),T=i(e($),a(w)*t(b.dec)-e(b.dec)*t($));return M=M+Y(M),{azimuth:R($,w,b.dec),altitude:M,distance:b.dist,parallacticAngle:T}},h.getMoonIllumination=function(r){var d=k(r||new Date),l=J(d),v=oe(d),w=149598e3,_=x(e(l.dec)*e(v.dec)+t(l.dec)*t(v.dec)*t(l.ra-v.ra)),b=i(w*e(_),v.dist-w*t(_)),$=i(t(l.dec)*e(l.ra-v.ra),e(l.dec)*t(v.dec)-t(l.dec)*e(v.dec)*t(l.ra-v.ra));return{fraction:(1+t(b))/2,phase:.5+.5*b*($<0?-1:1)/Math.PI,angle:$}};function X(r,d){return new Date(r.valueOf()+d*c/24)}h.getMoonTimes=function(r,d,l,v){var w=new Date(r);v?w.setUTCHours(0,0,0,0):w.setHours(0,0,0,0);for(var _=.133*o,b=h.getMoonPosition(w,d,l).altitude-_,$,M,T,W,P,U,E,j,V,I,C,A,G,D=1;D<=24&&($=h.getMoonPosition(X(w,D),d,l).altitude-_,M=h.getMoonPosition(X(w,D+1),d,l).altitude-_,P=(b+M)/2-$,U=(M-b)/2,E=-U/(2*P),j=(P*E+U)*E+$,V=U*U-4*P*$,I=0,V>=0&&(G=Math.sqrt(V)/(Math.abs(P)*2),C=E-G,A=E+G,Math.abs(C)<=1&&I++,Math.abs(A)<=1&&I++,C<-1&&(C=A)),I===1?b<0?T=D+C:W=D+C:I===2&&(T=D+(j<0?A:C),W=D+(j<0?C:A)),!(T&&W));D+=2)b=M;var Q={};return T&&(Q.rise=X(w,T)),W&&(Q.set=X(w,W)),!T&&!W&&(Q[j>0?"alwaysUp":"alwaysDown"]=!0),Q},typeof le=="object"&&typeof ee<"u"?ee.exports=h:typeof define=="function"&&define.amd?define(h):window.SunCalc=h})()});var N=$e(pe(),1);var ke='<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700"><filter id="cloud"><feTurbulence type="fractalNoise" baseFrequency=".006 .012" numOctaves="5" seed="8"/><feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1.5 0 0 0 -.5"/><feGaussianBlur stdDeviation="1.8"/></filter><mask id="fade"><radialGradient id="g"><stop stop-color="white"/><stop offset="1" stop-color="black"/></radialGradient><ellipse cx="600" cy="350" rx="700" ry="330" fill="url(#g)"/></mask><rect width="1200" height="700" filter="url(#cloud)" mask="url(#fade)" opacity=".7"/></svg>',ce=`
-:host{display:block;container-type:inline-size;color:#fff;--glass:rgba(24,67,113,.36);--muted:#c2d8ec;--line:rgba(238,247,255,.19);--radius:22px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}*{box-sizing:border-box}ha-card{display:block;border:0;background:transparent;border-radius:26px;overflow:hidden;color:#fff;box-shadow:0 20px 70px #0b203729}button,a,input{-webkit-tap-highlight-color:transparent}button{font:inherit;color:inherit;cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #c0e9ff;outline-offset:4px}button{border:0}button:disabled{cursor:default}button:active{filter:brightness(1.08)}a{color:#c4eaff;text-underline-offset:4px}h1,h2,h3,p{margin:0}button h2{text-align:left}.atmosphere{position:relative;isolation:isolate;overflow:hidden;min-height:500px;background:#3674a9}.sky{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:linear-gradient(155deg,#14568c 0%,#367bb1 32%,#759fc3 65%,#b0c6d8 100%);transition:background 1.5s}.sky:after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(15,51,85,.1),transparent 60%)}.sun-orb{position:absolute;top:-80px;left:68%;width:340px;height:340px;background:radial-gradient(circle,#fffcece6 0,#fffbeaa6 4%,#ffffe33d 18%,#f5f8eb17 40%,transparent 68%);filter:blur(6px);transform:translateX(-50%)}.rays{position:absolute;left:25%;top:-230px;width:120%;height:850px;opacity:.2;transform:rotate(20deg);background:conic-gradient(from 130deg at 38% 0,transparent 0deg,#fffae7 8deg,transparent 14deg,#fdfbe9 16deg,transparent 23deg,#fff6de 29deg,transparent 36deg);filter:blur(12px)}.clouds{position:absolute;width:145%;height:750px;left:-20%;top:-180px;background-image:url("data:image/svg+xml,${encodeURIComponent(ke)}");background-size:100% 100%;opacity:.5;animation:cloud-drift 95s ease-in-out infinite alternate;will-change:transform}.clouds.near{top:60px;left:-25%;width:160%;height:800px;opacity:.24;animation-duration:135s;animation-direction:alternate-reverse;transform:scaleX(-1)}.horizon{position:absolute;bottom:-30%;left:-25%;width:150%;height:65%;background:radial-gradient(ellipse,rgba(203,223,239,.25),transparent 65%)}.stars{position:absolute;inset:0;background-image:radial-gradient(1px 1px at 8% 8%,white 70%,transparent),radial-gradient(1px 1px at 20% 15%,white 70%,transparent),radial-gradient(1px 1px at 65% 11%,white 70%,transparent),radial-gradient(1px 1px at 92% 21%,white 70%,transparent),radial-gradient(1.5px 1.5px at 77% 5%,white 70%,transparent),radial-gradient(1px 1px at 40% 6%,white 70%,transparent);opacity:0}.precipitation{position:absolute;top:0;left:0;max-width:100%;opacity:.75}.paused .clouds{animation-play-state:paused}.atmosphere[data-condition='sunny'] .clouds{opacity:.21}.atmosphere[data-condition='sunny'] .sky{background:linear-gradient(160deg,#176db5,#4c99cd 50%,#b3d7e8)}.atmosphere[data-condition='cloudy'] .sun-orb{opacity:.55}.atmosphere[data-condition='cloudy'] .clouds{opacity:.65}.atmosphere[data-condition='cloudy'] .sky{background:linear-gradient(155deg,#3a657f,#7796ad 60%,#a5b9c8)}.atmosphere[data-condition*='rain'] .sky,.atmosphere[data-condition='pouring'] .sky,.atmosphere[data-condition*='lightning'] .sky{background:linear-gradient(145deg,#263b59,#4e6c86 55%,#8da3b5)}.atmosphere[data-condition*='rain'] .sun-orb,.atmosphere[data-condition*='lightning'] .sun-orb{opacity:0}.atmosphere[data-condition*='snow'] .sky{background:linear-gradient(155deg,#687d96,#91a9bd 55%,#b9c8d7)}.atmosphere[data-condition='fog'] .sky{background:linear-gradient(155deg,#7f929f,#9fadb8 60%,#b7c4cc)}.atmosphere[data-night='true'] .sky{background:linear-gradient(155deg,#09152f,#183453 55%,#41566d)}.atmosphere[data-night='true'] .sun-orb{background:radial-gradient(circle,#edf3ff 0,#c1d2f5c9 4%,#afbfe329 7%,transparent 42%);width:200px;height:200px;top:0;left:78%;filter:blur(1px)}.atmosphere[data-night='true'] .rays{opacity:0}.atmosphere[data-night='true'] .stars{opacity:.7}.atmosphere[data-night='true'] .clouds{opacity:.17}.atmosphere[data-night='true']{--glass:rgba(18,38,65,.5)}
-.body{max-width:1210px;margin:auto;padding:24px 42px 20px}.toolbar{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:#e7f0fa}.location-pin{font-size:22px;line-height:1}.motion{margin-left:auto;background:rgba(30,71,110,.2);border:1px solid #d1e4f52b;backdrop-filter:blur(12px);border-radius:50%;width:34px;height:34px;display:grid;place-items:center;font-size:14px}.hero{text-align:center;padding:48px 0 47px;text-shadow:0 2px 18px #224d6d22}.hero h1{font-size:37px;letter-spacing:-1px;font-weight:400;line-height:1.15}.temperature{font-size:108px;font-weight:200;letter-spacing:-7px;line-height:1.1;padding-right:0;margin:0 0 0 12px}.condition{font-size:22px;font-weight:500;margin:0 0 7px;letter-spacing:-.35px}.hero-range{font-size:16px;font-weight:500}.hero-range span{padding:0 9px;opacity:.65}.forecast-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}.panel{display:block;min-width:0;position:relative;overflow:hidden;text-align:left;color:white;background:var(--glass);border-radius:var(--radius);border:1px solid #e0effb12;padding:19px 20px;box-shadow:inset 0 1px 0 #ffffff06;backdrop-filter:blur(22px) saturate(1.15);-webkit-backdrop-filter:blur(22px) saturate(1.15)}button.panel{transition:background .18s ease,box-shadow .18s ease,transform .18s ease}button.panel:hover{background:rgba(21,62,105,.47);box-shadow:inset 0 1px 0 #ffffff18}h2{font-size:14px;font-weight:550;color:#dfedf8;display:flex;gap:7px;align-items:center;line-height:1.3;letter-spacing:-.1px}h2>span:first-child{opacity:.72;font-size:17px;font-weight:400;line-height:1}.chevron{margin-left:auto;font-size:20px!important;opacity:.4!important;line-height:1!important}.panel-header{display:flex;align-items:center;justify-content:space-between;gap:8px}.warning{grid-column:span 5;min-height:179px;display:flex;flex-direction:column;justify-content:center}.warning.has-warning{justify-content:flex-start}.warning h2{margin-bottom:15px}.warning-title{font-size:22px;font-weight:550;letter-spacing:-.4px;line-height:1.2}.has-warning .warning-title{font-size:23px}.warning-line{font-size:13px;color:#d6e7f7;margin-top:7px;display:flex;align-items:center;gap:6px}.severity-dot{display:inline-block;flex-shrink:0;width:8px;height:8px;border-radius:50%;background:#f9d367;box-shadow:0 0 9px #f9d36733}.level-2 .severity-dot{background:#ffab5a}.level-3 .severity-dot{background:#ff766e}.warning-preview{font-size:13px;line-height:1.45;margin-top:12px;opacity:.88;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.warning-count{position:absolute;right:18px;bottom:12px;font-size:12px;opacity:.7}.hourly{grid-column:span 7;padding-bottom:13px}.segmented{display:flex;background:#ffffff0d;border-radius:20px;padding:3px;gap:3px}.segmented button{background:transparent;color:#daeafb;border-radius:20px;width:31px;height:27px;display:grid;place-items:center;font-size:19px;padding:0}.segmented button[aria-pressed='true']{background:#d4e9fa42;color:#fff}.hours{display:flex;gap:14px;overflow-x:auto;margin:17px -20px 0;padding:0 20px 3px;scrollbar-width:none;overscroll-behavior-x:contain;scroll-snap-type:x proximity}.hours::-webkit-scrollbar{display:none}.hour{display:flex;flex-direction:column;align-items:center;gap:4px;flex:0 0 43px;background:transparent;padding:2px 0;color:white;scroll-snap-align:start}.hour>span:first-child{font-size:13px;font-weight:550}.weather-icon{display:block;overflow:visible;flex-shrink:0}.hour .weather-icon{margin-top:5px;margin-bottom:0;filter:drop-shadow(0 2px 2px #17456715)}.hour .chance{color:#a8e2ff;font-size:10px;min-height:13px}.hour strong{font-size:18px;font-weight:600;line-height:1.2}.hour small{font-size:10px;opacity:.7}.daily{grid-column:span 5;align-self:stretch;padding-bottom:7px}.daily h2{padding-bottom:6px}.day{display:grid;grid-template-columns:64px 33px 29px 1fr 30px;gap:9px;align-items:center;width:100%;padding:14px 0;border-bottom:1px solid var(--line);background:transparent;text-align:left;font-size:18px;min-height:70px}.day:last-child{border:0}.day-name{font-size:16px;font-weight:550}.day-condition{display:flex;flex-direction:column;align-items:center;gap:1px}.day-condition small{color:#abe2fa;font-size:10px;line-height:1}.low{color:#c4dcef;text-align:right}.high{text-align:right;font-weight:600}.range{height:5px;background:#143b6236;border-radius:8px;position:relative;display:block}.range>span{position:absolute;height:100%;background:linear-gradient(90deg,#7bd5d7,#d9dfa1);border-radius:8px;min-width:3px}.range>i{position:absolute;top:-1px;width:7px;height:7px;border-radius:50%;background:white;border:1.5px solid #407da9;transform:translateX(-50%)}.metrics{grid-column:span 7;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.metrics .panel{min-height:151px;padding:17px 18px 14px}.metric-value{font-size:43px;line-height:1.15;font-weight:400;letter-spacing:-1.8px;margin-top:10px}.unit{display:inline-block;font-size:15px;font-weight:450;letter-spacing:0;padding-left:5px;opacity:.85}.metric-note{font-size:13px;line-height:1.5;margin-top:2px;color:#dfedf8}.feels-line{height:5px;border-radius:5px;margin:20px 0 7px;background:linear-gradient(90deg,#81c7df,#afdfc2,#e9dda4);position:relative}.feels-line:after{content:'';height:12px;width:2px;background:#fff;position:absolute;left:50%;top:-3px}.feels-line span{position:absolute;background:white;width:9px;height:9px;border:2px solid #97d5d0;border-radius:50%;top:-2px}.sun-arc{display:block;width:100%;height:57px;margin:0 -1px -12px;overflow:visible}.sun-note{position:relative;padding-top:0}.aq-head{display:flex;align-items:baseline;gap:10px}.aq-category{font-size:17px;font-weight:500}.spectrum{height:5px;border-radius:20px;position:relative;margin:18px 0 10px}.spectrum.aqi{background:linear-gradient(90deg,#76d2ef,#63d7b2,#d2dc69,#e9c168,#f08474,#cd80bc)}.spectrum.uv{background:linear-gradient(90deg,#6bd4c6,#d2df83,#ecc876,#e38d83,#b98fb8);margin-top:17px}.spectrum i{position:absolute;top:-2px;border:2px solid #d6e9f4;background:white;width:9px;height:9px;border-radius:50%;transform:translateX(-50%)}.wind-layout{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-top:9px}.wind-layout .metric-value{margin-top:0}.wind-layout .unit{display:block;padding:0;font-size:12px}.wind-layout .metric-note{font-size:11px;margin-top:5px;white-space:nowrap}.compass{position:relative;border-radius:50%;height:94px;width:94px;flex:0 0 94px;background:repeating-conic-gradient(from 0deg,#f3f9ff42 0deg 1deg,transparent 1deg 6deg);border:6px solid transparent;background-clip:padding-box}.compass:before{content:'';position:absolute;inset:8px;border-radius:50%;background:#44759c}.compass span{position:absolute;font-size:10px;color:#e7f0f8;line-height:10px;z-index:1}.north{top:0;left:50%;transform:translateX(-50%)}.south{bottom:0;left:50%;transform:translateX(-50%)}.west{left:0;top:50%;transform:translateY(-50%)}.east{right:0;top:50%;transform:translateY(-50%)}.compass b{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:600;z-index:2}.needle{position:absolute;width:2px;height:62px;left:40px;top:10px;background:linear-gradient(0deg,#cfdeeb55 0 30%,transparent 30% 70%,#e7f5ff 70%);transform-origin:center}.needle:after{content:'';position:absolute;left:-3px;top:-1px;border:4px solid transparent;border-bottom:7px solid #eef9ff;border-top:0}.mini-rain{display:flex;gap:4px;height:33px;align-items:flex-end;margin:4px 0 0}.mini-rain i{background:#a5d7ec;border-radius:2px;width:5px;max-height:33px}.radar-panel{grid-column:span 7}.text-button{background:none;padding:0;font-size:12px;color:#e4f2ff}.rain-outlook{padding:17px 0 3px;background:none;display:flex;justify-content:space-between;gap:10px;text-align:left;font-size:15px;line-height:1.4;width:100%}.rain-chart{height:64px;margin-top:9px}.rain-chart svg{width:100%;height:100%}.chart-times{display:flex;justify-content:space-between;color:#ccdfed;font-size:10px;margin-top:7px}.moon-panel{grid-column:span 5}.moon-layout{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px}.moon{display:block;width:110px;height:110px;filter:drop-shadow(0 0 12px #d2e7ff11);flex:0 0 110px}.moon-phase{font-size:19px;font-weight:500;letter-spacing:-.3px}.moon-date{font-size:17px;margin-top:16px}.moon-date span{display:block;font-size:11px;opacity:.7;margin-top:3px}.small-metrics{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.small-metrics .panel{min-height:129px}.small-value{font-size:35px;font-weight:400;letter-spacing:-1px;margin-top:13px}.small-value span{font-size:17px;margin-left:5px;letter-spacing:0}.pressure-scale{position:relative;height:1px;background:#ffffff30;margin-top:16px;display:flex;justify-content:space-between}.pressure-scale span{font-size:9px;transform:translateY(5px);opacity:.7}.pressure-scale i{position:absolute;width:4px;height:10px;top:-4px;background:#e6f7ff;border-radius:2px}footer{display:flex;justify-content:space-between;align-items:center;gap:15px;font-size:10px;line-height:1.5;color:#e6eff8b3;margin:20px 2px 0}footer button{font:inherit;background:none;padding:5px 0;color:inherit}.connection-status{background:#725c35b0;backdrop-filter:blur(10px);border:1px solid #ffe1a740;border-radius:12px;font-size:13px;padding:13px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px}.connection-status button{margin-left:auto;background:none;text-decoration:underline}.empty{min-height:300px;display:grid;align-content:center;justify-items:center;gap:20px}.empty button{background:#ffffff20;border-radius:20px;padding:9px 20px}.no-data{color:var(--muted)}
-dialog{position:fixed;color:#f6faff;background:linear-gradient(145deg,#244e72f5,#18324efc);border:1px solid #d6ecff2b;border-radius:26px;padding:0;width:min(610px,calc(100vw - 28px));max-height:min(88dvh,1000px);box-shadow:0 25px 100px #07172f77;backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);font-family:inherit;overscroll-behavior:contain}dialog::backdrop{background:#07162a65;backdrop-filter:blur(7px)}.dialog-inner{padding:26px}.dialog-header{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:24px}.dialog-header h2{font-size:23px;font-weight:550;letter-spacing:-.5px;color:white}.close{font-size:26px;width:36px;height:36px;border-radius:50%;background:#e6f1ff16;font-weight:300;display:grid;place-items:center;padding:0}.dialog-inner p{font-size:15px;line-height:1.65;color:#e0ecf7;margin:15px 0;white-space:pre-line}.dialog-inner a{font-size:13px}.detail-temperature{font-size:68px;font-weight:250;letter-spacing:-2px;margin:10px 0}.detail-temperature span{font-size:25px;letter-spacing:-.5px}.detail-weather{display:flex;flex-direction:column;align-items:center}.detail-weather .detail-temperature{margin-bottom:0}.detail-weather p{margin-top:0}.detail-stats{margin:22px 0 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 22px}.detail-stats>div{border-top:1px solid #ffffff20;padding:14px 0;display:flex;flex-direction:column;gap:7px}.detail-stats dt{color:#c3d8e9;font-size:13px}.detail-stats dd{font-size:20px;margin:0;font-weight:500}.detail-chart{margin:25px 0 15px}.detail-chart svg{width:100%;height:auto;overflow:visible}.detail-chart .chart-times{font-size:12px}.detail-moon{margin:10px auto 24px;width:210px;height:210px}.warning-detail{padding:22px 0;border-top:1px solid #e6eff82b}.warning-detail h3{font-size:22px;display:flex;align-items:center;gap:9px}.warning-dates{font-size:13px!important;color:#bed4e7!important}.radar-stage{position:relative;aspect-ratio:1.25;background:#192e3f;border-radius:15px;overflow:hidden}.radar-stage img{position:absolute;width:100%;height:100%;inset:0;object-fit:contain}.radar-error{position:absolute;inset:0;background:#172e45;place-content:center;text-align:center;padding:24px;font-size:16px}.radar-error:not([hidden]){display:grid}.radar-controls{display:flex;align-items:center;gap:12px;margin:15px 0}.radar-controls button{padding:8px 10px;white-space:nowrap;border-radius:20px;background:#ffffff15;font-size:13px}.radar-slider{flex:1;min-width:0;accent-color:#b8e4ff}.radar-time{font-size:13px;min-width:44px}.radar-caption{font-size:11px;opacity:.65}.map-switch{display:flex;gap:8px;margin-bottom:14px}.map-switch button,.full-button{background:#d9edff1c;border:1px solid #d9edff1a;border-radius:20px;padding:10px 18px;font-size:14px}.full-button{margin-top:15px}.map-host iframe{width:100%;height:440px;border:0;border-radius:14px;margin-top:20px}.map-host>a{display:block;margin-top:8px}.error{color:#ffd3a4!important}.dialog-inner>.sun-arc{height:150px;margin:30px auto 20px}
-@keyframes cloud-drift{from{transform:translateX(-4%) scale(1.03)}to{transform:translateX(8%) scale(1.13)}}
-@media(prefers-reduced-motion:reduce){.clouds{animation:none!important}button.panel{transition:none}.sky{transition:none}}
-@container(max-width:850px){.body{padding:20px 24px 18px}.hero{padding-top:32px;padding-bottom:36px}.hero h1{font-size:32px}.temperature{font-size:94px}.forecast-grid{gap:12px}.panel{padding:17px 16px;--radius:19px}.warning{grid-column:span 12;min-height:115px}.warning.has-warning{min-height:150px}.warning h2{margin-bottom:10px}.warning-preview{-webkit-line-clamp:1}.hourly{grid-column:span 12}.hours{gap:24px;margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px}.daily{grid-column:span 6}.metrics{grid-column:span 6;grid-template-columns:1fr;gap:12px}.metrics .panel{min-height:115px}.metrics .panel:nth-child(3),.metrics .panel:nth-child(5),.metrics .panel:nth-child(6){grid-column:auto}.daily{grid-row:span 1}.day{grid-template-columns:56px 26px 27px 1fr 28px;gap:6px;padding:17px 0;min-height:79px}.metric-value{font-size:35px}.sun-arc{height:42px}.radar-panel{grid-column:span 6}.moon-panel{grid-column:span 6}.moon{width:90px;height:90px;flex-basis:90px}.moon-layout{flex-wrap:wrap}.moon-phase{font-size:17px}.small-metrics{gap:12px}.small-metrics .panel{padding:16px 14px}.small-metrics h2{font-size:12px;gap:5px}.small-metrics .metric-note{font-size:11px}.small-value{font-size:29px}.small-value span{font-size:13px}.aq-category{font-size:14px}.wind-layout{margin-top:4px}.compass{height:84px;width:84px;flex-basis:84px}.needle{left:35px;top:5px}}
-@container(max-width:540px){.body{padding:14px 14px 16px}.toolbar{font-size:12px}.hero{padding:26px 0 31px}.hero h1{font-size:30px}.temperature{font-size:98px;letter-spacing:-6px;line-height:1.08}.condition{font-size:20px}.hero-range{font-size:14px}.forecast-grid{gap:12px}.warning,.hourly,.daily,.metrics,.radar-panel,.moon-panel{grid-column:1/-1}.warning{min-height:112px}.has-warning .warning-title{font-size:21px}.warning-preview{font-size:12px;-webkit-line-clamp:2}.warning-line{font-size:12px}.hours{gap:15px;margin-top:15px}.panel-header h2{font-size:13px}.day{grid-template-columns:70px 34px 32px 1fr 32px;gap:10px;min-height:61px;padding:10px 0;font-size:17px}.day-name{font-size:15px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.metrics .panel{display:block!important;min-height:155px;padding:16px 14px 14px}.metrics h2{font-size:12px}.metric-value{font-size:39px;letter-spacing:-1.5px}.metric-note{font-size:12px}.wind-layout .metric-value{font-size:30px}.wind-layout .unit{font-size:11px}.wind-layout .metric-note{font-size:10px;white-space:normal}.compass{height:76px;width:76px;flex:0 0 76px;border-width:4px}.needle{left:33px;top:6px;height:55px}.compass span{font-size:9px}.compass b{font-size:11px}.sun-arc{height:53px;margin-bottom:-7px}.spectrum{margin-top:16px}.moon-layout{flex-wrap:nowrap}.moon{width:120px;height:120px;flex-basis:120px}.moon-phase{font-size:21px}.moon-date{margin-top:19px}.moon-panel{min-height:195px}.small-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.small-metrics .panel:last-child{grid-column:1/-1;min-height:115px}.small-metrics h2{font-size:12px}.small-metrics .panel:last-child .small-value{font-size:35px}.connection-status{font-size:12px;flex-wrap:wrap}footer{font-size:9px;gap:6px}.motion{height:30px;width:30px}.radar-panel{padding-bottom:18px}.rain-outlook{font-size:14px}h2{font-size:13px}}
-@container(max-width:340px){.body{padding:10px}.metrics .panel{padding:14px 11px}.compass{height:64px;width:64px;flex-basis:64px}.needle{left:27px;top:4px;height:47px}.wind-layout .metric-value{font-size:27px}.day{gap:6px;grid-template-columns:61px 29px 30px 1fr 30px}.segmented button{width:26px}.panel-header h2{font-size:12px}}
-`;var y=p=>String(p??"").replace(/[&<>"']/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[e]),g=(p,e=0)=>p==null||!Number.isFinite(Number(p))?"\u2014":Number(p).toFixed(e),z=p=>p!=null&&Number.isFinite(Number(p)),H=(p,e,t)=>Math.max(e,Math.min(t,p)),Me={sunny:["Sunny","Zonnig"],"clear-night":["Clear","Helder"],partlycloudy:["Partly cloudy","Wisselend bewolkt"],cloudy:["Cloudy","Bewolkt"],rainy:["Rain","Regen"],pouring:["Heavy rain","Zware regen"],snowy:["Snow","Sneeuw"],"snowy-rainy":["Sleet","Natte sneeuw"],lightning:["Thunderstorms","Onweer"],"lightning-rainy":["Thunderstorms","Onweer"],fog:["Fog","Mist"],windy:["Windy","Winderig"],"windy-variant":["Windy","Winderig"],hail:["Hail","Hagel"],exceptional:["Severe weather","Zwaar weer"]},ze={en:{hourly:"Hourly forecast",daily:"Daily forecast",feels:"Feels like",sunset:"Sunset",sunrise:"Sunrise",air:"Air quality",wind:"Wind",uv:"UV index",rain:"Precipitation",humidity:"Humidity",visibility:"Visibility",pressure:"Pressure",moon:"Moon",radar:"Rain radar",now:"Now",today:"Today",tomorrow:"Tomorrow",high:"H",low:"L",gusts:"Gusts",dew:"Dew point",warnings:"Weather warnings",clear:"No local warnings",unavailable:"Weather unavailable",stale:"Forecast out of date",warnUnavailable:"Warning status unavailable",upcoming:"Upcoming",active:"Active",until:"until",from:"from",close:"Close",pause:"Pause animation",play:"Animate weather",temperature:"Temperature",updated:"Updated",details:"Details",windmap:"Wind map",rainmap:"Rain map",forecast:"Forecast",lowUV:"Low",moderate:"Moderate",highUV:"High",veryHigh:"Very high",extreme:"Extreme",good:"Good",fair:"Fair",poor:"Poor",veryPoor:"Very poor",extremelyPoor:"Extremely poor",excellent:"Excellent",illuminated:"illuminated",nextFull:"Next full moon",new:"New moon",waxCrescent:"Waxing crescent",first:"First quarter",waxGibbous:"Waxing gibbous",full:"Full moon",waneGibbous:"Waning gibbous",last:"Last quarter",waneCrescent:"Waning crescent",rainSoon:"Rain in the next 90 minutes",noRain:"No rain expected in the next 90 minutes",mapError:"Radar image unavailable",refresh:"Refresh",outlook:"Weather outlook",source:"Weather data",km:"km",rainAmount:"Rainfall",light:"Light",heavy:"Heavy",model:"Modelled air quality",unavailableDetail:"This source is temporarily unavailable.",coverage:"KMI warnings returned for this location. Read the affected areas below.",current:"Current conditions"},nl:{hourly:"Uurlijkse verwachting",daily:"Dagelijkse verwachting",feels:"Gevoelstemperatuur",sunset:"Zonsondergang",sunrise:"Zonsopgang",air:"Luchtkwaliteit",wind:"Wind",uv:"UV-index",rain:"Neerslag",humidity:"Luchtvochtigheid",visibility:"Zicht",pressure:"Luchtdruk",moon:"Maan",radar:"Regenradar",now:"Nu",today:"Vandaag",tomorrow:"Morgen",high:"H",low:"L",gusts:"Windstoten",dew:"Dauwpunt",warnings:"Weerwaarschuwingen",clear:"Geen lokale waarschuwingen",unavailable:"Weer niet beschikbaar",stale:"Verwachting verouderd",warnUnavailable:"Waarschuwingsstatus niet beschikbaar",upcoming:"Binnenkort",active:"Actief",until:"tot",from:"vanaf",close:"Sluiten",pause:"Animatie pauzeren",play:"Weer animeren",temperature:"Temperatuur",updated:"Bijgewerkt",details:"Details",windmap:"Windkaart",rainmap:"Regenkaart",forecast:"Verwachting",lowUV:"Laag",moderate:"Matig",highUV:"Hoog",veryHigh:"Zeer hoog",extreme:"Extreem",good:"Goed",fair:"Redelijk",poor:"Slecht",veryPoor:"Zeer slecht",extremelyPoor:"Extreem slecht",excellent:"Uitstekend",illuminated:"verlicht",nextFull:"Volgende volle maan",new:"Nieuwe maan",waxCrescent:"Wassende maan",first:"Eerste kwartier",waxGibbous:"Wassende maan",full:"Volle maan",waneGibbous:"Afnemende maan",last:"Laatste kwartier",waneCrescent:"Afnemende maan",rainSoon:"Regen in de komende 90 minuten",noRain:"Geen regen verwacht in de komende 90 minuten",mapError:"Radarbeeld niet beschikbaar",refresh:"Vernieuwen",outlook:"Weerbericht",source:"Weergegevens",km:"km",rainAmount:"Regenhoeveelheid",light:"Licht",heavy:"Zwaar",model:"Gemodelleerde luchtkwaliteit",unavailableDetail:"Deze bron is tijdelijk niet beschikbaar.",coverage:"KMI-waarschuwingen voor deze locatie. Lees hieronder voor welke gebieden ze gelden.",current:"Huidige omstandigheden"}};function te(p,e=!1,t=28){let a=/rain|pour|hail/.test(p),n=/snow/.test(p),i=/lightning|exceptional/.test(p),x=/cloud|rain|pour|snow|hail|lightning/.test(p),o=p==="clear-night"||e,c="";return/wind/.test(p)?c='<path d="M4 11h21c8 0 8-9 2-9-4 0-5 3-4 5M1 18h32c7 0 7 9 1 9-4 0-4-3-4-4M6 25h12" fill="none" stroke="#e1f2ff" stroke-width="2.4" stroke-linecap="round"/>':p==="fog"?c='<path d="M7 9h26M2 16h34M6 23h30M12 30h20" stroke="#e0edf4" stroke-width="3" stroke-linecap="round"/>':((!x||p==="partlycloudy")&&(c+=o?'<path d="M28 2a15 15 0 1 0 10 23A14 14 0 0 1 28 2Z" fill="#eff5ff"/>':'<g stroke="#ffd05c" stroke-width="2.2" stroke-linecap="round"><path d="M20 1v3m0 28v3M3 18h3m28 0h3M8 6l2 3m20 19 2 2M8 30l2-3M30 8l2-2"/><circle cx="20" cy="18" r="10" fill="#ffd05c" stroke="none"/></g>'),x&&(c+='<path d="M9 29C-1 29-1 16 8 15 10 3 28 4 30 16 40 15 43 29 32 29Z" fill="#f4f8ff"/><path d="M9 29h23c7 0 8-4 8-4H1s2 4 8 4" fill="#c4d8ec" opacity=".5"/>'),a&&(c+='<path d="m12 33-2 5m12-5-2 5m12-5-2 5" stroke="#74d3ff" stroke-width="2.6" stroke-linecap="round"/>'),n&&(c+='<g fill="#b7e6ff"><circle cx="12" cy="35" r="2"/><circle cx="23" cy="38" r="2"/><circle cx="33" cy="34" r="2"/></g>'),i&&(c+='<path d="m22 24-7 10h6l-3 9 12-14h-8l4-5Z" fill="#ffcf55"/>')),`<svg class="weather-icon" width="${t}" height="${t}" viewBox="0 0 42 44" aria-hidden="true">${c}</svg>`}var Se={hourly:"\u25F7",daily:"\u25A6",feels:"\u2668",sunset:"\u2600",sunrise:"\u2600",air:"\u283F",wind:"\u224B",uv:"\u2600",rain:"\u25D2",humidity:"\u2667",visibility:"\u25C9",pressure:"\u25F4",moon:"\u263E",radar:"\u25C9",warnings:"\u25B3"},ae=class extends HTMLElement{constructor(){super(),this.attachShadow({mode:"open"}),this._mode="temperature",this._paused=!1,this._fetching=!1,this._reduced=matchMedia("(prefers-reduced-motion: reduce)"),this.shadowRoot.innerHTML=`<style>${ce}</style><ha-card><div class="atmosphere"><div class="sky" aria-hidden="true"><div class="sun-orb"></div><div class="rays"></div><div class="stars"></div><div class="clouds far"></div><div class="clouds near"></div><canvas class="precipitation"></canvas><div class="horizon"></div></div><div class="body"></div></div></ha-card><dialog aria-labelledby="detail-title"><div class="dialog-inner"></div></dialog>`,this.shadowRoot.addEventListener("click",e=>{let t=e.target.closest("[data-action]");t&&this._action(t.dataset.action,t.dataset.value)}),this.shadowRoot.querySelector("dialog").addEventListener("click",e=>{e.target===e.currentTarget&&e.currentTarget.close()}),this._onVisibility=()=>this._animate(),this._onMotion=()=>{this._animate(),this._reduced.matches&&(this._radarPlaying=!1,clearInterval(this._radarTimer)),this._render()},this.shadowRoot.querySelector("dialog").addEventListener("close",()=>clearInterval(this._radarTimer)),this._radarFrame=0}setConfig(e){if(e.entity&&!e.entity.startsWith("weather."))throw new Error("Select an Atmosphere weather entity.");this._config={...e},this._data=null,this._lastKey=null,this._hass&&this._fetch()}static getConfigElement(){return document.createElement("atmosphere-card-editor")}static getStubConfig(e){return{entity:Object.keys(e?.states||{}).find(t=>e.states[t].attributes.atmosphere_entry_id)}}getCardSize(){return 15}getGridOptions(){return{columns:"full",rows:"auto",min_columns:6}}set hass(e){if(this._hass=e,!this._config)return;let t=this._entity(),a=`${t?.attributes?.updated_at}|${t?.state}|${e.connection?.connected}`;(!this._data||a!==this._lastKey)&&(this._lastKey=a,this._fetch())}_entity(){let e=this._hass?.states||{};return e[this._config?.entity]||(this._config?.entity?null:Object.values(e).find(t=>t.entity_id.startsWith("weather.")&&t.attributes.atmosphere_entry_id))}connectedCallback(){this._observer||=new IntersectionObserver(e=>{this._visible=e[0].isIntersecting,this._animate()}),this._observer.observe(this),this._resize||=new ResizeObserver(()=>this._sizeCanvas()),this._resize.observe(this),document.addEventListener("visibilitychange",this._onVisibility),this._reduced.addEventListener("change",this._onMotion),this._timer=setInterval(()=>{this._render(),(!this._data||Date.now()-new Date(this._data.updated_at)>8*6e4)&&this._fetch()},6e4),this._render(),this._hass&&this._fetch()}disconnectedCallback(){clearInterval(this._timer),clearInterval(this._radarTimer),cancelAnimationFrame(this._raf),this._observer?.disconnect(),this._resize?.disconnect(),document.removeEventListener("visibilitychange",this._onVisibility),this._reduced.removeEventListener("change",this._onMotion)}async _fetch(){if(!this._hass||!this._config||this._fetching)return;this._fetching=!0;let e=this._config;try{let t=this._entity();if(this._config.entity&&!t)throw new Error(`Entity unavailable: ${this._config.entity}`);let a=await this._hass.callWS({type:"atmosphere/data",...t?.attributes?.atmosphere_entry_id?{entry_id:t.attributes.atmosphere_entry_id}:{}});if(e!==this._config)return;this._data=a,this._error=null}catch(t){this._error=t.message||"Connection unavailable"}finally{this._fetching=!1,e!==this._config?this._fetch():this._render()}}get _nl(){return(this._config?.language||this._data?.language||this._hass?.language||"en").startsWith("nl")}_t(e){return ze[this._nl?"nl":"en"][e]||e}_condition(e){return Me[e]?.[this._nl?1:0]||"\u2014"}_time(e,t={}){return!e||!Number.isFinite(new Date(e).getTime())?"\u2014":new Intl.DateTimeFormat(this._nl?"nl-BE":"en-GB",{timeZone:this._data?.timezone||"Europe/Brussels",hour:"2-digit",minute:"2-digit",...t}).format(new Date(e))}_date(e,t={}){return new Intl.DateTimeFormat(this._nl?"nl-BE":"en-GB",{timeZone:this._data?.timezone||"Europe/Brussels",...t}).format(new Date(e))}_temp(e){return`${g(e)}${z(e)?"\xB0":""}`}_isStale(){return this._error||!this._data?.available||Date.now()-new Date(this._data.updated_at).getTime()>20*6e4}_warnings(){return(this._data?.warnings||[]).filter(e=>new Date(e.ends_at)>new Date).sort((e,t)=>(t.level||0)-(e.level||0)||new Date(e.starts_at)-new Date(t.starts_at))}_panel(e,t,a=e,n=""){return`<button class="panel ${n}" data-action="detail" data-value="${y(a)}"><h2><span aria-hidden="true">${Se[e]||"\u25C9"}</span>${this._t(e)}<span class="chevron" aria-hidden="true">\u203A</span></h2>${t}</button>`}_render(){if(!this.isConnected)return;let e=this.shadowRoot.querySelector(".body");if(!this._data){e.innerHTML=`<div class="empty"><h1>Atmosphere</h1><p>${this._error?y(this._error):this._nl?"Het weer wordt opgehaald\u2026":"Fetching the weather\u2026"}</p><button data-action="refresh">${this._t("refresh")}</button></div>`;return}let t=this._data,a=t.current,n=t.daily[0]||{},i=this._warnings(),x=this._isStale(),o=Date.now()<new Date(t.sun.sunrise)||Date.now()>new Date(t.sun.sunset),c=a.condition||"cloudy",f=this.shadowRoot.querySelector(".atmosphere");f.dataset.condition=c,f.dataset.night=String(o),f.classList.toggle("paused",this._paused||this._reduced.matches||!this._visible||document.hidden);let s=t.hourly.filter(h=>new Date(h.datetime).getTime()>Date.now()-36e5).slice(0,24).map((h,F)=>F===0?{...h,temperature:a.temperature,condition:c,is_daytime:!o}:h),u=e.querySelector(".hours")?.scrollLeft||0,m=e.querySelector(".days")?.scrollTop||0,k=N.default.getMoonIllumination(new Date),S=Date.now()>new Date(t.sun.sunset).getTime(),L=S?"sunrise":"sunset",B=S?N.default.getTimes(new Date(Date.now()+864e5),t.latitude,t.longitude).sunrise:t.sun.sunset,R=t.air?.european_aqi,Z=z(R)?this._t(R<=20?"good":R<=40?"fair":R<=60?"moderate":R<=80?"poor":R<=100?"veryPoor":"extremelyPoor"):"\u2014",q=a.uv_index,Y=z(q)?this._t(q<3?"lowUV":q<6?"moderate":q<8?"highUV":q<11?"veryHigh":"extreme"):"\u2014",K=z(a.wind_bearing)?["N","NE","E","SE","S","SW","W","NW"][Math.round(a.wind_bearing/45)%8]:"\u2014",O=t.rain.filter(h=>new Date(h.datetime)>new Date&&new Date(h.datetime)<new Date(Date.now()+90*6e4)),J=O.some(h=>(h.precipitation||0)>0||h.might_rain);e.innerHTML=`
+var we=Object.create;var de=Object.defineProperty;var be=Object.getOwnPropertyDescriptor;var ve=Object.getOwnPropertyNames;var ye=Object.getPrototypeOf,_e=Object.prototype.hasOwnProperty;var $e=(p,e)=>()=>(e||p((e={exports:{}}).exports,e),e.exports);var ke=(p,e,t,a)=>{if(e&&typeof e=="object"||typeof e=="function")for(let n of ve(e))!_e.call(p,n)&&n!==t&&de(p,n,{get:()=>e[n],enumerable:!(a=be(e,n))||a.enumerable});return p};var Me=(p,e,t)=>(t=p!=null?we(ye(p)):{},ke(e||!p||!p.__esModule?de(t,"default",{value:p,enumerable:!0}):t,p));var pe=$e((le,ee)=>{(function(){"use strict";var p=Math.PI,e=Math.sin,t=Math.cos,a=Math.tan,n=Math.asin,i=Math.atan2,x=Math.acos,o=p/180,c=1e3*60*60*24,f=2440588,s=2451545;function u(r){return r.valueOf()/c-.5+f}function m(r){return new Date((r+.5-f)*c)}function k(r){return u(r)-s}var S=o*23.4397;function L(r,d){return i(e(r)*t(S)-a(d)*e(S),t(r))}function B(r,d){return n(e(d)*t(S)+t(d)*e(S)*e(r))}function R(r,d,l){return i(e(r),t(r)*e(d)-a(l)*t(d))}function Z(r,d,l){return n(e(d)*e(l)+t(d)*t(l)*t(r))}function q(r,d){return o*(280.16+360.9856235*r)-d}function Y(r){return r<0&&(r=0),2967e-7/Math.tan(r+.00312536/(r+.08901179))}function K(r){return o*(357.5291+.98560028*r)}function O(r){var d=o*(1.9148*e(r)+.02*e(2*r)+3e-4*e(3*r)),l=o*102.9372;return r+d+l+p}function J(r){var d=K(r),l=O(d);return{dec:B(l,0),ra:L(l,0)}}var h={};h.getPosition=function(r,d,l){var v=o*-l,w=o*d,_=k(r),b=J(_),$=q(_,v)-b.ra;return{azimuth:R($,w,b.dec),altitude:Z($,w,b.dec)}};var F=h.times=[[-.833,"sunrise","sunset"],[-.3,"sunriseEnd","sunsetStart"],[-6,"dawn","dusk"],[-12,"nauticalDawn","nauticalDusk"],[-18,"nightEnd","night"],[6,"goldenHourEnd","goldenHour"]];h.addTime=function(r,d,l){F.push([r,d,l])};var ne=9e-4;function me(r,d){return Math.round(r-ne-d/(2*p))}function re(r,d,l){return ne+(r+d)/(2*p)+l}function se(r,d,l){return s+r+.0053*e(d)-.0069*e(2*l)}function ge(r,d,l){return x((e(r)-e(d)*e(l))/(t(d)*t(l)))}function fe(r){return-2.076*Math.sqrt(r)/60}function xe(r,d,l,v,w,_,b){var $=ge(r,l,v),M=re($,d,w);return se(M,_,b)}h.getTimes=function(r,d,l,v){v=v||0;var w=o*-l,_=o*d,b=fe(v),$=k(r),M=me($,w),T=re(0,w,M),E=K(T),P=O(E),U=B(P,0),W=se(T,E,P),j,V,I,C,A,G,D={solarNoon:m(W),nadir:m(W-.5)};for(j=0,V=F.length;j<V;j+=1)I=F[j],C=(I[0]+b)*o,A=xe(C,w,_,U,M,E,P),G=W-(A-W),D[I[1]]=m(G),D[I[2]]=m(A);return D};function oe(r){var d=o*(218.316+13.176396*r),l=o*(134.963+13.064993*r),v=o*(93.272+13.22935*r),w=d+o*6.289*e(l),_=o*5.128*e(v),b=385001-20905*t(l);return{ra:L(w,_),dec:B(w,_),dist:b}}h.getMoonPosition=function(r,d,l){var v=o*-l,w=o*d,_=k(r),b=oe(_),$=q(_,v)-b.ra,M=Z($,w,b.dec),T=i(e($),a(w)*t(b.dec)-e(b.dec)*t($));return M=M+Y(M),{azimuth:R($,w,b.dec),altitude:M,distance:b.dist,parallacticAngle:T}},h.getMoonIllumination=function(r){var d=k(r||new Date),l=J(d),v=oe(d),w=149598e3,_=x(e(l.dec)*e(v.dec)+t(l.dec)*t(v.dec)*t(l.ra-v.ra)),b=i(w*e(_),v.dist-w*t(_)),$=i(t(l.dec)*e(l.ra-v.ra),e(l.dec)*t(v.dec)-t(l.dec)*e(v.dec)*t(l.ra-v.ra));return{fraction:(1+t(b))/2,phase:.5+.5*b*($<0?-1:1)/Math.PI,angle:$}};function X(r,d){return new Date(r.valueOf()+d*c/24)}h.getMoonTimes=function(r,d,l,v){var w=new Date(r);v?w.setUTCHours(0,0,0,0):w.setHours(0,0,0,0);for(var _=.133*o,b=h.getMoonPosition(w,d,l).altitude-_,$,M,T,E,P,U,W,j,V,I,C,A,G,D=1;D<=24&&($=h.getMoonPosition(X(w,D),d,l).altitude-_,M=h.getMoonPosition(X(w,D+1),d,l).altitude-_,P=(b+M)/2-$,U=(M-b)/2,W=-U/(2*P),j=(P*W+U)*W+$,V=U*U-4*P*$,I=0,V>=0&&(G=Math.sqrt(V)/(Math.abs(P)*2),C=W-G,A=W+G,Math.abs(C)<=1&&I++,Math.abs(A)<=1&&I++,C<-1&&(C=A)),I===1?b<0?T=D+C:E=D+C:I===2&&(T=D+(j<0?A:C),E=D+(j<0?C:A)),!(T&&E));D+=2)b=M;var Q={};return T&&(Q.rise=X(w,T)),E&&(Q.set=X(w,E)),!T&&!E&&(Q[j>0?"alwaysUp":"alwaysDown"]=!0),Q},typeof le=="object"&&typeof ee<"u"?ee.exports=h:typeof define=="function"&&define.amd?define(h):window.SunCalc=h})()});var N=Me(pe(),1);var ce=`:host {
+  display: block;
+  container-type: inline-size;
+  color: #fff;
+  --glass: rgba(24, 67, 113, 0.36);
+  --muted: #c2d8ec;
+  --line: rgba(238, 247, 255, 0.19);
+  --radius: 22px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+* {
+  box-sizing: border-box;
+}
+ha-card {
+  display: block;
+  border: 0;
+  background: transparent;
+  border-radius: 26px;
+  overflow: hidden;
+  color: #fff;
+  box-shadow: 0 20px 70px #0b203729;
+}
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid #c0e9ff;
+  outline-offset: 4px;
+}
+button {
+  border: 0;
+}
+button:disabled {
+  cursor: default;
+}
+button:active {
+  filter: brightness(1.08);
+}
+a {
+  color: #c4eaff;
+  text-underline-offset: 4px;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+button h2 {
+  text-align: left;
+}
+.atmosphere {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 500px;
+  background: #3674a9;
+}
+.sky {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(
+    155deg,
+    #14568c 0%,
+    #367bb1 32%,
+    #759fc3 65%,
+    #b0c6d8 100%
+  );
+  transition: background 1.5s;
+}
+.sky:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(15, 51, 85, 0.1), transparent 60%);
+}
+.sun-orb {
+  position: absolute;
+  top: -80px;
+  left: 68%;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(
+    circle,
+    #fffcece6 0,
+    #fffbeaa6 4%,
+    #ffffe33d 18%,
+    #f5f8eb17 40%,
+    transparent 68%
+  );
+  filter: blur(6px);
+  transform: translateX(-50%);
+}
+.rays {
+  position: absolute;
+  left: 25%;
+  top: -230px;
+  width: 120%;
+  height: 850px;
+  opacity: 0.2;
+  transform: rotate(20deg);
+  background: conic-gradient(
+    from 130deg at 38% 0,
+    transparent 0deg,
+    #fffae7 8deg,
+    transparent 14deg,
+    #fdfbe9 16deg,
+    transparent 23deg,
+    #fff6de 29deg,
+    transparent 36deg
+  );
+  filter: blur(12px);
+}
+.clouds {
+  position: absolute;
+  width: 145%;
+  height: 750px;
+  left: -20%;
+  top: -180px;
+  background-image: url("data:image/svg+xml,CLOUD_TEXTURE");
+  background-size: 100% 100%;
+  opacity: 0.5;
+  animation: cloud-drift 95s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.clouds.near {
+  top: 60px;
+  left: -25%;
+  width: 160%;
+  height: 800px;
+  opacity: 0.24;
+  animation-duration: 135s;
+  animation-direction: alternate-reverse;
+  transform: scaleX(-1);
+}
+.horizon {
+  position: absolute;
+  bottom: -30%;
+  left: -25%;
+  width: 150%;
+  height: 65%;
+  background: radial-gradient(
+    ellipse,
+    rgba(203, 223, 239, 0.25),
+    transparent 65%
+  );
+}
+.stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 8% 8%, white 70%, transparent),
+    radial-gradient(1px 1px at 20% 15%, white 70%, transparent),
+    radial-gradient(1px 1px at 65% 11%, white 70%, transparent),
+    radial-gradient(1px 1px at 92% 21%, white 70%, transparent),
+    radial-gradient(1.5px 1.5px at 77% 5%, white 70%, transparent),
+    radial-gradient(1px 1px at 40% 6%, white 70%, transparent);
+  opacity: 0;
+}
+.precipitation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 100%;
+  opacity: 0.75;
+}
+.paused .clouds {
+  animation-play-state: paused;
+}
+.atmosphere[data-condition="sunny"] .clouds {
+  opacity: 0.21;
+}
+.atmosphere[data-condition="sunny"] .sky {
+  background: linear-gradient(160deg, #176db5, #4c99cd 50%, #b3d7e8);
+}
+.atmosphere[data-condition="cloudy"] .sun-orb {
+  opacity: 0.55;
+}
+.atmosphere[data-condition="cloudy"] .clouds {
+  opacity: 0.65;
+}
+.atmosphere[data-condition="cloudy"] .sky {
+  background: linear-gradient(155deg, #3a657f, #7796ad 60%, #a5b9c8);
+}
+.atmosphere[data-condition*="rain"] .sky,
+.atmosphere[data-condition="pouring"] .sky,
+.atmosphere[data-condition*="lightning"] .sky {
+  background: linear-gradient(145deg, #263b59, #4e6c86 55%, #8da3b5);
+}
+.atmosphere[data-condition*="rain"] .sun-orb,
+.atmosphere[data-condition*="lightning"] .sun-orb {
+  opacity: 0;
+}
+.atmosphere[data-condition*="snow"] .sky {
+  background: linear-gradient(155deg, #687d96, #91a9bd 55%, #b9c8d7);
+}
+.atmosphere[data-condition="fog"] .sky {
+  background: linear-gradient(155deg, #7f929f, #9fadb8 60%, #b7c4cc);
+}
+.atmosphere[data-night="true"] .sky {
+  background: linear-gradient(155deg, #09152f, #183453 55%, #41566d);
+}
+.atmosphere[data-night="true"] .sun-orb {
+  background: radial-gradient(
+    circle,
+    #edf3ff 0,
+    #c1d2f5c9 4%,
+    #afbfe329 7%,
+    transparent 42%
+  );
+  width: 200px;
+  height: 200px;
+  top: 0;
+  left: 78%;
+  filter: blur(1px);
+}
+.atmosphere[data-night="true"] .rays {
+  opacity: 0;
+}
+.atmosphere[data-night="true"] .stars {
+  opacity: 0.7;
+}
+.atmosphere[data-night="true"] .clouds {
+  opacity: 0.17;
+}
+.atmosphere[data-night="true"] {
+  --glass: rgba(18, 38, 65, 0.5);
+}
+.body {
+  max-width: 1210px;
+  margin: auto;
+  padding: 24px 42px 20px;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e7f0fa;
+}
+.location-pin {
+  font-size: 22px;
+  line-height: 1;
+}
+.motion {
+  margin-left: auto;
+  background: rgba(30, 71, 110, 0.2);
+  border: 1px solid #d1e4f52b;
+  backdrop-filter: blur(12px);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+.hero {
+  text-align: center;
+  padding: 48px 0 47px;
+  text-shadow: 0 2px 18px #224d6d22;
+}
+.hero h1 {
+  font-size: 37px;
+  letter-spacing: -1px;
+  font-weight: 400;
+  line-height: 1.15;
+}
+.temperature {
+  font-size: 108px;
+  font-weight: 200;
+  letter-spacing: -7px;
+  line-height: 1.1;
+  padding-right: 0;
+  margin: 0 0 0 12px;
+}
+.condition {
+  font-size: 22px;
+  font-weight: 500;
+  margin: 0 0 7px;
+  letter-spacing: -0.35px;
+}
+.hero-range {
+  font-size: 16px;
+  font-weight: 500;
+}
+.hero-range span {
+  padding: 0 9px;
+  opacity: 0.65;
+}
+.forecast-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+}
+.panel {
+  display: block;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+  color: white;
+  background: var(--glass);
+  border-radius: var(--radius);
+  border: 1px solid #e0effb12;
+  padding: 19px 20px;
+  box-shadow: inset 0 1px 0 #ffffff06;
+  backdrop-filter: blur(22px) saturate(1.15);
+  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+}
+button.panel {
+  transition:
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+button.panel:hover {
+  background: rgba(21, 62, 105, 0.47);
+  box-shadow: inset 0 1px 0 #ffffff18;
+}
+h2 {
+  font-size: 14px;
+  font-weight: 550;
+  color: #dfedf8;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  line-height: 1.3;
+  letter-spacing: -0.1px;
+}
+h2 > span:first-child {
+  opacity: 0.72;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1;
+}
+.chevron {
+  margin-left: auto;
+  font-size: 20px !important;
+  opacity: 0.4 !important;
+  line-height: 1 !important;
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.warning {
+  grid-column: span 5;
+  min-height: 179px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.warning.has-warning {
+  justify-content: flex-start;
+}
+.warning h2 {
+  margin-bottom: 15px;
+}
+.warning-title {
+  font-size: 22px;
+  font-weight: 550;
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+}
+.has-warning .warning-title {
+  font-size: 23px;
+}
+.warning-line {
+  font-size: 13px;
+  color: #d6e7f7;
+  margin-top: 7px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.severity-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f9d367;
+  box-shadow: 0 0 9px #f9d36733;
+}
+.level-2 .severity-dot {
+  background: #ffab5a;
+}
+.level-3 .severity-dot {
+  background: #ff766e;
+}
+.warning-preview {
+  font-size: 13px;
+  line-height: 1.45;
+  margin-top: 12px;
+  opacity: 0.88;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.warning-count {
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+.hourly {
+  grid-column: span 7;
+  padding-bottom: 13px;
+}
+.segmented {
+  display: flex;
+  background: #ffffff0d;
+  border-radius: 20px;
+  padding: 3px;
+  gap: 3px;
+}
+.segmented button {
+  background: transparent;
+  color: #daeafb;
+  border-radius: 20px;
+  width: 31px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  font-size: 19px;
+  padding: 0;
+}
+.segmented button[aria-pressed="true"] {
+  background: #d4e9fa42;
+  color: #fff;
+}
+.hours {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  margin: 17px -20px 0;
+  padding: 0 20px 3px;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+}
+.hours::-webkit-scrollbar {
+  display: none;
+}
+.hour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 43px;
+  background: transparent;
+  padding: 2px 0;
+  color: white;
+  scroll-snap-align: start;
+}
+.hour > span:first-child {
+  font-size: 13px;
+  font-weight: 550;
+}
+.weather-icon {
+  display: block;
+  overflow: visible;
+  flex-shrink: 0;
+}
+.hour .weather-icon {
+  margin-top: 5px;
+  margin-bottom: 0;
+  filter: drop-shadow(0 2px 2px #17456715);
+}
+.hour .chance {
+  color: #a8e2ff;
+  font-size: 10px;
+  min-height: 13px;
+}
+.hour strong {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.hour small {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.daily {
+  grid-column: span 5;
+  align-self: stretch;
+  padding-bottom: 7px;
+}
+.daily h2 {
+  padding-bottom: 6px;
+}
+.day {
+  display: grid;
+  grid-template-columns: 64px 33px 29px 1fr 30px;
+  gap: 9px;
+  align-items: center;
+  width: 100%;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+  font-size: 18px;
+  min-height: 70px;
+}
+.day:last-child {
+  border: 0;
+}
+.day-name {
+  font-size: 16px;
+  font-weight: 550;
+}
+.day-condition {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.day-condition small {
+  color: #abe2fa;
+  font-size: 10px;
+  line-height: 1;
+}
+.low {
+  color: #c4dcef;
+  text-align: right;
+}
+.high {
+  text-align: right;
+  font-weight: 600;
+}
+.range {
+  height: 5px;
+  background: #143b6236;
+  border-radius: 8px;
+  position: relative;
+  display: block;
+}
+.range > span {
+  position: absolute;
+  height: 100%;
+  background: linear-gradient(90deg, #7bd5d7, #d9dfa1);
+  border-radius: 8px;
+  min-width: 3px;
+}
+.range > i {
+  position: absolute;
+  top: -1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: white;
+  border: 1.5px solid #407da9;
+  transform: translateX(-50%);
+}
+.metrics {
+  grid-column: span 7;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.metrics .panel {
+  min-height: 151px;
+  padding: 17px 18px 14px;
+}
+.metric-value {
+  font-size: 43px;
+  line-height: 1.15;
+  font-weight: 400;
+  letter-spacing: -1.8px;
+  margin-top: 10px;
+}
+.unit {
+  display: inline-block;
+  font-size: 15px;
+  font-weight: 450;
+  letter-spacing: 0;
+  padding-left: 5px;
+  opacity: 0.85;
+}
+.metric-note {
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 2px;
+  color: #dfedf8;
+}
+.feels-line {
+  height: 5px;
+  border-radius: 5px;
+  margin: 20px 0 7px;
+  background: linear-gradient(90deg, #81c7df, #afdfc2, #e9dda4);
+  position: relative;
+}
+.feels-line:after {
+  content: "";
+  height: 12px;
+  width: 2px;
+  background: #fff;
+  position: absolute;
+  left: 50%;
+  top: -3px;
+}
+.feels-line span {
+  position: absolute;
+  background: white;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #97d5d0;
+  border-radius: 50%;
+  top: -2px;
+}
+.sun-arc {
+  display: block;
+  width: 100%;
+  height: 57px;
+  margin: 0 -1px -12px;
+  overflow: visible;
+}
+.sun-note {
+  position: relative;
+  padding-top: 0;
+}
+.aq-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.aq-category {
+  font-size: 17px;
+  font-weight: 500;
+}
+.spectrum {
+  height: 5px;
+  border-radius: 20px;
+  position: relative;
+  margin: 18px 0 10px;
+}
+.spectrum.aqi {
+  background: linear-gradient(
+    90deg,
+    #76d2ef,
+    #63d7b2,
+    #d2dc69,
+    #e9c168,
+    #f08474,
+    #cd80bc
+  );
+}
+.spectrum.uv {
+  background: linear-gradient(
+    90deg,
+    #6bd4c6,
+    #d2df83,
+    #ecc876,
+    #e38d83,
+    #b98fb8
+  );
+  margin-top: 17px;
+}
+.spectrum i {
+  position: absolute;
+  top: -2px;
+  border: 2px solid #d6e9f4;
+  background: white;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+.wind-layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  margin-top: 9px;
+}
+.wind-layout .metric-value {
+  margin-top: 0;
+}
+.wind-layout .unit {
+  display: block;
+  padding: 0;
+  font-size: 12px;
+}
+.wind-layout .metric-note {
+  font-size: 11px;
+  margin-top: 5px;
+  white-space: nowrap;
+}
+.compass {
+  position: relative;
+  border-radius: 50%;
+  height: 94px;
+  width: 94px;
+  flex: 0 0 94px;
+  background: repeating-conic-gradient(
+    from 0deg,
+    #f3f9ff42 0deg 1deg,
+    transparent 1deg 6deg
+  );
+  border: 6px solid transparent;
+  background-clip: padding-box;
+}
+.compass:before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: #44759c;
+}
+.compass span {
+  position: absolute;
+  font-size: 10px;
+  color: #e7f0f8;
+  line-height: 10px;
+  z-index: 1;
+}
+.north {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.south {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.west {
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.east {
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.compass b {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 2;
+}
+.needle {
+  position: absolute;
+  width: 2px;
+  height: 62px;
+  left: 40px;
+  top: 10px;
+  background: linear-gradient(
+    0deg,
+    #cfdeeb55 0 30%,
+    transparent 30% 70%,
+    #e7f5ff 70%
+  );
+  transform-origin: center;
+}
+.needle:after {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: -1px;
+  border: 4px solid transparent;
+  border-bottom: 7px solid #eef9ff;
+  border-top: 0;
+}
+.mini-rain {
+  display: flex;
+  gap: 4px;
+  height: 33px;
+  align-items: flex-end;
+  margin: 4px 0 0;
+}
+.mini-rain i {
+  background: #a5d7ec;
+  border-radius: 2px;
+  width: 5px;
+  max-height: 33px;
+}
+.radar-panel {
+  grid-column: span 7;
+}
+.text-button {
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  color: #e4f2ff;
+}
+.rain-outlook {
+  padding: 17px 0 3px;
+  background: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  font-size: 15px;
+  line-height: 1.4;
+  width: 100%;
+}
+.rain-chart {
+  height: 64px;
+  margin-top: 9px;
+}
+.rain-chart svg {
+  width: 100%;
+  height: 100%;
+}
+.chart-times {
+  display: flex;
+  justify-content: space-between;
+  color: #ccdfed;
+  font-size: 10px;
+  margin-top: 7px;
+}
+.moon-panel {
+  grid-column: span 5;
+}
+.moon-layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 14px;
+}
+.moon {
+  display: block;
+  width: 110px;
+  height: 110px;
+  filter: drop-shadow(0 0 12px #d2e7ff11);
+  flex: 0 0 110px;
+}
+.moon-phase {
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+.moon-date {
+  font-size: 17px;
+  margin-top: 16px;
+}
+.moon-date span {
+  display: block;
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 3px;
+}
+.small-metrics {
+  grid-column: 1/-1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.small-metrics .panel {
+  min-height: 129px;
+}
+.small-value {
+  font-size: 35px;
+  font-weight: 400;
+  letter-spacing: -1px;
+  margin-top: 13px;
+}
+.small-value span {
+  font-size: 17px;
+  margin-left: 5px;
+  letter-spacing: 0;
+}
+.pressure-scale {
+  position: relative;
+  height: 1px;
+  background: #ffffff30;
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+}
+.pressure-scale span {
+  font-size: 9px;
+  transform: translateY(5px);
+  opacity: 0.7;
+}
+.pressure-scale i {
+  position: absolute;
+  width: 4px;
+  height: 10px;
+  top: -4px;
+  background: #e6f7ff;
+  border-radius: 2px;
+}
+footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #e6eff8b3;
+  margin: 20px 2px 0;
+}
+footer button {
+  font: inherit;
+  background: none;
+  padding: 5px 0;
+  color: inherit;
+}
+.connection-status {
+  background: #725c35b0;
+  backdrop-filter: blur(10px);
+  border: 1px solid #ffe1a740;
+  border-radius: 12px;
+  font-size: 13px;
+  padding: 13px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.connection-status button {
+  margin-left: auto;
+  background: none;
+  text-decoration: underline;
+}
+.empty {
+  min-height: 300px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 20px;
+}
+.empty button {
+  background: #ffffff20;
+  border-radius: 20px;
+  padding: 9px 20px;
+}
+.no-data {
+  color: var(--muted);
+}
+dialog {
+  position: fixed;
+  color: #f6faff;
+  background: linear-gradient(145deg, #244e72f5, #18324efc);
+  border: 1px solid #d6ecff2b;
+  border-radius: 26px;
+  padding: 0;
+  width: min(610px, calc(100vw - 28px));
+  max-height: min(88dvh, 1000px);
+  box-shadow: 0 25px 100px #07172f77;
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  font-family: inherit;
+  overscroll-behavior: contain;
+}
+dialog::backdrop {
+  background: #07162a65;
+  backdrop-filter: blur(7px);
+}
+.dialog-inner {
+  padding: 26px;
+}
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+.dialog-header h2 {
+  font-size: 23px;
+  font-weight: 550;
+  letter-spacing: -0.5px;
+  color: white;
+}
+.close {
+  font-size: 26px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e6f1ff16;
+  font-weight: 300;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.dialog-inner p {
+  font-size: 15px;
+  line-height: 1.65;
+  color: #e0ecf7;
+  margin: 15px 0;
+  white-space: pre-line;
+}
+.dialog-inner a {
+  font-size: 13px;
+}
+.detail-temperature {
+  font-size: 68px;
+  font-weight: 250;
+  letter-spacing: -2px;
+  margin: 10px 0;
+}
+.detail-temperature span {
+  font-size: 25px;
+  letter-spacing: -0.5px;
+}
+.detail-weather {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.detail-weather .detail-temperature {
+  margin-bottom: 0;
+}
+.detail-weather p {
+  margin-top: 0;
+}
+.detail-stats {
+  margin: 22px 0 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 22px;
+}
+.detail-stats > div {
+  border-top: 1px solid #ffffff20;
+  padding: 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.detail-stats dt {
+  color: #c3d8e9;
+  font-size: 13px;
+}
+.detail-stats dd {
+  font-size: 20px;
+  margin: 0;
+  font-weight: 500;
+}
+.detail-chart {
+  margin: 25px 0 15px;
+}
+.detail-chart svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.detail-chart .chart-times {
+  font-size: 12px;
+}
+.detail-moon {
+  margin: 10px auto 24px;
+  width: 210px;
+  height: 210px;
+}
+.warning-detail {
+  padding: 22px 0;
+  border-top: 1px solid #e6eff82b;
+}
+.warning-detail h3 {
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.warning-dates {
+  font-size: 13px !important;
+  color: #bed4e7 !important;
+}
+.radar-stage {
+  position: relative;
+  aspect-ratio: 1.25;
+  background: #192e3f;
+  border-radius: 15px;
+  overflow: hidden;
+}
+.radar-stage img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  inset: 0;
+  object-fit: contain;
+}
+.radar-error {
+  position: absolute;
+  inset: 0;
+  background: #172e45;
+  place-content: center;
+  text-align: center;
+  padding: 24px;
+  font-size: 16px;
+}
+.radar-error:not([hidden]) {
+  display: grid;
+}
+.radar-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 15px 0;
+}
+.radar-controls button {
+  padding: 8px 10px;
+  white-space: nowrap;
+  border-radius: 20px;
+  background: #ffffff15;
+  font-size: 13px;
+}
+.radar-slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: #b8e4ff;
+}
+.radar-time {
+  font-size: 13px;
+  min-width: 44px;
+}
+.radar-caption {
+  font-size: 11px;
+  opacity: 0.65;
+}
+.map-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.map-switch button,
+.full-button {
+  background: #d9edff1c;
+  border: 1px solid #d9edff1a;
+  border-radius: 20px;
+  padding: 10px 18px;
+  font-size: 14px;
+}
+.full-button {
+  margin-top: 15px;
+}
+.map-host iframe {
+  width: 100%;
+  height: 440px;
+  border: 0;
+  border-radius: 14px;
+  margin-top: 20px;
+}
+.map-host > a {
+  display: block;
+  margin-top: 8px;
+}
+.error {
+  color: #ffd3a4 !important;
+}
+.dialog-inner > .sun-arc {
+  height: 150px;
+  margin: 30px auto 20px;
+}
+@keyframes cloud-drift {
+  from {
+    transform: translateX(-4%) scale(1.03);
+  }
+  to {
+    transform: translateX(8%) scale(1.13);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clouds {
+    animation: none !important;
+  }
+  button.panel {
+    transition: none;
+  }
+  .sky {
+    transition: none;
+  }
+}
+@container (max-width:850px) {
+  .body {
+    padding: 20px 24px 18px;
+  }
+  .hero {
+    padding-top: 32px;
+    padding-bottom: 36px;
+  }
+  .hero h1 {
+    font-size: 32px;
+  }
+  .temperature {
+    font-size: 94px;
+  }
+  .forecast-grid {
+    gap: 12px;
+  }
+  .panel {
+    padding: 17px 16px;
+    --radius: 19px;
+  }
+  .warning {
+    grid-column: span 12;
+    min-height: 115px;
+  }
+  .warning.has-warning {
+    min-height: 150px;
+  }
+  .warning h2 {
+    margin-bottom: 10px;
+  }
+  .warning-preview {
+    -webkit-line-clamp: 1;
+  }
+  .hourly {
+    grid-column: span 12;
+  }
+  .hours {
+    gap: 24px;
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .daily {
+    grid-column: span 6;
+  }
+  .metrics {
+    grid-column: span 6;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .metrics .panel {
+    min-height: 115px;
+  }
+  .metrics .panel:nth-child(3),
+  .metrics .panel:nth-child(5),
+  .metrics .panel:nth-child(6) {
+    grid-column: auto;
+  }
+  .daily {
+    grid-row: span 1;
+  }
+  .day {
+    grid-template-columns: 56px 26px 27px 1fr 28px;
+    gap: 6px;
+    padding: 17px 0;
+    min-height: 79px;
+  }
+  .metric-value {
+    font-size: 35px;
+  }
+  .sun-arc {
+    height: 42px;
+  }
+  .radar-panel {
+    grid-column: span 6;
+  }
+  .moon-panel {
+    grid-column: span 6;
+  }
+  .moon {
+    width: 90px;
+    height: 90px;
+    flex-basis: 90px;
+  }
+  .moon-layout {
+    flex-wrap: wrap;
+  }
+  .moon-phase {
+    font-size: 17px;
+  }
+  .small-metrics {
+    gap: 12px;
+  }
+  .small-metrics .panel {
+    padding: 16px 14px;
+  }
+  .small-metrics h2 {
+    font-size: 12px;
+    gap: 5px;
+  }
+  .small-metrics .metric-note {
+    font-size: 11px;
+  }
+  .small-value {
+    font-size: 29px;
+  }
+  .small-value span {
+    font-size: 13px;
+  }
+  .aq-category {
+    font-size: 14px;
+  }
+  .wind-layout {
+    margin-top: 4px;
+  }
+  .compass {
+    height: 84px;
+    width: 84px;
+    flex-basis: 84px;
+  }
+  .needle {
+    left: 35px;
+    top: 5px;
+  }
+}
+@container (max-width:540px) {
+  .body {
+    padding: 14px 14px 16px;
+  }
+  .toolbar {
+    font-size: 12px;
+  }
+  .hero {
+    padding: 26px 0 31px;
+  }
+  .hero h1 {
+    font-size: 30px;
+  }
+  .temperature {
+    font-size: 98px;
+    letter-spacing: -6px;
+    line-height: 1.08;
+  }
+  .condition {
+    font-size: 20px;
+  }
+  .hero-range {
+    font-size: 14px;
+  }
+  .forecast-grid {
+    gap: 12px;
+  }
+  .warning,
+  .hourly,
+  .daily,
+  .metrics,
+  .radar-panel,
+  .moon-panel {
+    grid-column: 1/-1;
+  }
+  .warning {
+    min-height: 112px;
+  }
+  .has-warning .warning-title {
+    font-size: 21px;
+  }
+  .warning-preview {
+    font-size: 12px;
+    -webkit-line-clamp: 2;
+  }
+  .warning-line {
+    font-size: 12px;
+  }
+  .hours {
+    gap: 15px;
+    margin-top: 15px;
+  }
+  .panel-header h2 {
+    font-size: 13px;
+  }
+  .day {
+    grid-template-columns: 70px 34px 32px 1fr 32px;
+    gap: 10px;
+    min-height: 61px;
+    padding: 10px 0;
+    font-size: 17px;
+  }
+  .day-name {
+    font-size: 15px;
+  }
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .metrics .panel {
+    display: block !important;
+    min-height: 155px;
+    padding: 16px 14px 14px;
+  }
+  .metrics h2 {
+    font-size: 12px;
+  }
+  .metric-value {
+    font-size: 39px;
+    letter-spacing: -1.5px;
+  }
+  .metric-note {
+    font-size: 12px;
+  }
+  .wind-layout .metric-value {
+    font-size: 30px;
+  }
+  .wind-layout .unit {
+    font-size: 11px;
+  }
+  .wind-layout .metric-note {
+    font-size: 10px;
+    white-space: normal;
+  }
+  .compass {
+    height: 76px;
+    width: 76px;
+    flex: 0 0 76px;
+    border-width: 4px;
+  }
+  .needle {
+    left: 33px;
+    top: 6px;
+    height: 55px;
+  }
+  .compass span {
+    font-size: 9px;
+  }
+  .compass b {
+    font-size: 11px;
+  }
+  .sun-arc {
+    height: 53px;
+    margin-bottom: -7px;
+  }
+  .spectrum {
+    margin-top: 16px;
+  }
+  .moon-layout {
+    flex-wrap: nowrap;
+  }
+  .moon {
+    width: 120px;
+    height: 120px;
+    flex-basis: 120px;
+  }
+  .moon-phase {
+    font-size: 21px;
+  }
+  .moon-date {
+    margin-top: 19px;
+  }
+  .moon-panel {
+    min-height: 195px;
+  }
+  .small-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .small-metrics .panel:last-child {
+    grid-column: 1/-1;
+    min-height: 115px;
+  }
+  .small-metrics h2 {
+    font-size: 12px;
+  }
+  .small-metrics .panel:last-child .small-value {
+    font-size: 35px;
+  }
+  .connection-status {
+    font-size: 12px;
+    flex-wrap: wrap;
+  }
+  footer {
+    font-size: 9px;
+    gap: 6px;
+  }
+  .motion {
+    height: 30px;
+    width: 30px;
+  }
+  .radar-panel {
+    padding-bottom: 18px;
+  }
+  .rain-outlook {
+    font-size: 14px;
+  }
+  h2 {
+    font-size: 13px;
+  }
+}
+@container (max-width:340px) {
+  .body {
+    padding: 10px;
+  }
+  .metrics .panel {
+    padding: 14px 11px;
+  }
+  .compass {
+    height: 64px;
+    width: 64px;
+    flex-basis: 64px;
+  }
+  .needle {
+    left: 27px;
+    top: 4px;
+    height: 47px;
+  }
+  .wind-layout .metric-value {
+    font-size: 27px;
+  }
+  .day {
+    gap: 6px;
+    grid-template-columns: 61px 29px 30px 1fr 30px;
+  }
+  .segmented button {
+    width: 26px;
+  }
+  .panel-header h2 {
+    font-size: 12px;
+  }
+}
+`;var he=`<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="1200"
+  height="700"
+  viewBox="0 0 1200 700"
+>
+  <filter id="cloud">
+    <feTurbulence
+      type="fractalNoise"
+      baseFrequency=".006 .012"
+      numOctaves="5"
+      seed="8"
+    />
+    <feColorMatrix
+      type="matrix"
+      values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1.5 0 0 0 -.5"
+    />
+    <feGaussianBlur stdDeviation="1.8" />
+  </filter>
+  <mask id="fade">
+    <radialGradient id="g">
+      <stop stop-color="white" />
+      <stop offset="1" stop-color="black" />
+    </radialGradient>
+    <ellipse cx="600" cy="350" rx="700" ry="330" fill="url(#g)" />
+  </mask>
+  <rect
+    width="1200"
+    height="700"
+    filter="url(#cloud)"
+    mask="url(#fade)"
+    opacity=".7"
+  />
+</svg>
+`;var ue=ce.replace("CLOUD_TEXTURE",encodeURIComponent(he));var y=p=>String(p??"").replace(/[&<>"']/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[e]),g=(p,e=0)=>p==null||!Number.isFinite(Number(p))?"\u2014":Number(p).toFixed(e),z=p=>p!=null&&Number.isFinite(Number(p)),H=(p,e,t)=>Math.max(e,Math.min(t,p)),De={sunny:["Sunny","Zonnig"],"clear-night":["Clear","Helder"],partlycloudy:["Partly cloudy","Wisselend bewolkt"],cloudy:["Cloudy","Bewolkt"],rainy:["Rain","Regen"],pouring:["Heavy rain","Zware regen"],snowy:["Snow","Sneeuw"],"snowy-rainy":["Sleet","Natte sneeuw"],lightning:["Thunderstorms","Onweer"],"lightning-rainy":["Thunderstorms","Onweer"],fog:["Fog","Mist"],windy:["Windy","Winderig"],"windy-variant":["Windy","Winderig"],hail:["Hail","Hagel"],exceptional:["Severe weather","Zwaar weer"]},Re={en:{hourly:"Hourly forecast",daily:"Daily forecast",feels:"Feels like",sunset:"Sunset",sunrise:"Sunrise",air:"Air quality",wind:"Wind",uv:"UV index",rain:"Precipitation",humidity:"Humidity",visibility:"Visibility",pressure:"Pressure",moon:"Moon",radar:"Rain radar",now:"Now",today:"Today",tomorrow:"Tomorrow",high:"H",low:"L",gusts:"Gusts",dew:"Dew point",warnings:"Weather warnings",clear:"No local warnings",unavailable:"Weather unavailable",stale:"Forecast out of date",warnUnavailable:"Warning status unavailable",upcoming:"Upcoming",active:"Active",until:"until",from:"from",close:"Close",pause:"Pause animation",play:"Animate weather",temperature:"Temperature",updated:"Updated",details:"Details",windmap:"Wind map",rainmap:"Rain map",forecast:"Forecast",lowUV:"Low",moderate:"Moderate",highUV:"High",veryHigh:"Very high",extreme:"Extreme",good:"Good",fair:"Fair",poor:"Poor",veryPoor:"Very poor",extremelyPoor:"Extremely poor",excellent:"Excellent",illuminated:"illuminated",nextFull:"Next full moon",new:"New moon",waxCrescent:"Waxing crescent",first:"First quarter",waxGibbous:"Waxing gibbous",full:"Full moon",waneGibbous:"Waning gibbous",last:"Last quarter",waneCrescent:"Waning crescent",rainSoon:"Rain in the next 90 minutes",noRain:"No rain expected in the next 90 minutes",mapError:"Radar image unavailable",refresh:"Refresh",outlook:"Weather outlook",source:"Weather data",km:"km",rainAmount:"Rainfall",light:"Light",heavy:"Heavy",model:"Modelled air quality",unavailableDetail:"This source is temporarily unavailable.",coverage:"KMI warnings returned for this location. Read the affected areas below.",current:"Current conditions"},nl:{hourly:"Uurlijkse verwachting",daily:"Dagelijkse verwachting",feels:"Gevoelstemperatuur",sunset:"Zonsondergang",sunrise:"Zonsopgang",air:"Luchtkwaliteit",wind:"Wind",uv:"UV-index",rain:"Neerslag",humidity:"Luchtvochtigheid",visibility:"Zicht",pressure:"Luchtdruk",moon:"Maan",radar:"Regenradar",now:"Nu",today:"Vandaag",tomorrow:"Morgen",high:"H",low:"L",gusts:"Windstoten",dew:"Dauwpunt",warnings:"Weerwaarschuwingen",clear:"Geen lokale waarschuwingen",unavailable:"Weer niet beschikbaar",stale:"Verwachting verouderd",warnUnavailable:"Waarschuwingsstatus niet beschikbaar",upcoming:"Binnenkort",active:"Actief",until:"tot",from:"vanaf",close:"Sluiten",pause:"Animatie pauzeren",play:"Weer animeren",temperature:"Temperatuur",updated:"Bijgewerkt",details:"Details",windmap:"Windkaart",rainmap:"Regenkaart",forecast:"Verwachting",lowUV:"Laag",moderate:"Matig",highUV:"Hoog",veryHigh:"Zeer hoog",extreme:"Extreem",good:"Goed",fair:"Redelijk",poor:"Slecht",veryPoor:"Zeer slecht",extremelyPoor:"Extreem slecht",excellent:"Uitstekend",illuminated:"verlicht",nextFull:"Volgende volle maan",new:"Nieuwe maan",waxCrescent:"Wassende maan",first:"Eerste kwartier",waxGibbous:"Wassende maan",full:"Volle maan",waneGibbous:"Afnemende maan",last:"Laatste kwartier",waneCrescent:"Afnemende maan",rainSoon:"Regen in de komende 90 minuten",noRain:"Geen regen verwacht in de komende 90 minuten",mapError:"Radarbeeld niet beschikbaar",refresh:"Vernieuwen",outlook:"Weerbericht",source:"Weergegevens",km:"km",rainAmount:"Regenhoeveelheid",light:"Licht",heavy:"Zwaar",model:"Gemodelleerde luchtkwaliteit",unavailableDetail:"Deze bron is tijdelijk niet beschikbaar.",coverage:"KMI-waarschuwingen voor deze locatie. Lees hieronder voor welke gebieden ze gelden.",current:"Huidige omstandigheden"}};function te(p,e=!1,t=28){let a=/rain|pour|hail/.test(p),n=/snow/.test(p),i=/lightning|exceptional/.test(p),x=/cloud|rain|pour|snow|hail|lightning/.test(p),o=p==="clear-night"||e,c="";return/wind/.test(p)?c='<path d="M4 11h21c8 0 8-9 2-9-4 0-5 3-4 5M1 18h32c7 0 7 9 1 9-4 0-4-3-4-4M6 25h12" fill="none" stroke="#e1f2ff" stroke-width="2.4" stroke-linecap="round"/>':p==="fog"?c='<path d="M7 9h26M2 16h34M6 23h30M12 30h20" stroke="#e0edf4" stroke-width="3" stroke-linecap="round"/>':((!x||p==="partlycloudy")&&(c+=o?'<path d="M28 2a15 15 0 1 0 10 23A14 14 0 0 1 28 2Z" fill="#eff5ff"/>':'<g stroke="#ffd05c" stroke-width="2.2" stroke-linecap="round"><path d="M20 1v3m0 28v3M3 18h3m28 0h3M8 6l2 3m20 19 2 2M8 30l2-3M30 8l2-2"/><circle cx="20" cy="18" r="10" fill="#ffd05c" stroke="none"/></g>'),x&&(c+='<path d="M9 29C-1 29-1 16 8 15 10 3 28 4 30 16 40 15 43 29 32 29Z" fill="#f4f8ff"/><path d="M9 29h23c7 0 8-4 8-4H1s2 4 8 4" fill="#c4d8ec" opacity=".5"/>'),a&&(c+='<path d="m12 33-2 5m12-5-2 5m12-5-2 5" stroke="#74d3ff" stroke-width="2.6" stroke-linecap="round"/>'),n&&(c+='<g fill="#b7e6ff"><circle cx="12" cy="35" r="2"/><circle cx="23" cy="38" r="2"/><circle cx="33" cy="34" r="2"/></g>'),i&&(c+='<path d="m22 24-7 10h6l-3 9 12-14h-8l4-5Z" fill="#ffcf55"/>')),`<svg class="weather-icon" width="${t}" height="${t}" viewBox="0 0 42 44" aria-hidden="true">${c}</svg>`}var Te={hourly:"\u25F7",daily:"\u25A6",feels:"\u2668",sunset:"\u2600",sunrise:"\u2600",air:"\u283F",wind:"\u224B",uv:"\u2600",rain:"\u25D2",humidity:"\u2667",visibility:"\u25C9",pressure:"\u25F4",moon:"\u263E",radar:"\u25C9",warnings:"\u25B3"},ae=class extends HTMLElement{constructor(){super(),this.attachShadow({mode:"open"}),this._mode="temperature",this._paused=!1,this._fetching=!1,this._reduced=matchMedia("(prefers-reduced-motion: reduce)"),this.shadowRoot.innerHTML=`<style>${ue}</style><ha-card><div class="atmosphere"><div class="sky" aria-hidden="true"><div class="sun-orb"></div><div class="rays"></div><div class="stars"></div><div class="clouds far"></div><div class="clouds near"></div><canvas class="precipitation"></canvas><div class="horizon"></div></div><div class="body"></div></div></ha-card><dialog aria-labelledby="detail-title"><div class="dialog-inner"></div></dialog>`,this.shadowRoot.addEventListener("click",e=>{let t=e.target.closest("[data-action]");t&&this._action(t.dataset.action,t.dataset.value)}),this.shadowRoot.querySelector("dialog").addEventListener("click",e=>{e.target===e.currentTarget&&e.currentTarget.close()}),this._onVisibility=()=>this._animate(),this._onMotion=()=>{this._animate(),this._reduced.matches&&(this._radarPlaying=!1,clearInterval(this._radarTimer)),this._render()},this.shadowRoot.querySelector("dialog").addEventListener("close",()=>clearInterval(this._radarTimer)),this._radarFrame=0}setConfig(e){if(e.entity&&!e.entity.startsWith("weather."))throw new Error("Select an Atmosphere weather entity.");this._config={...e},this._data=null,this._lastKey=null,this._hass&&this._fetch()}static getConfigElement(){return document.createElement("atmosphere-card-editor")}static getStubConfig(e){return{entity:Object.keys(e?.states||{}).find(t=>e.states[t].attributes.atmosphere_entry_id)}}getCardSize(){return 15}getGridOptions(){return{columns:"full",rows:"auto",min_columns:6}}set hass(e){if(this._hass=e,!this._config)return;let t=this._entity(),a=`${t?.attributes?.updated_at}|${t?.state}|${e.connection?.connected}`;(!this._data||a!==this._lastKey)&&(this._lastKey=a,this._fetch())}_entity(){let e=this._hass?.states||{};return e[this._config?.entity]||(this._config?.entity?null:Object.values(e).find(t=>t.entity_id.startsWith("weather.")&&t.attributes.atmosphere_entry_id))}connectedCallback(){this._observer||=new IntersectionObserver(e=>{this._visible=e[0].isIntersecting,this._animate()}),this._observer.observe(this),this._resize||=new ResizeObserver(()=>this._sizeCanvas()),this._resize.observe(this),document.addEventListener("visibilitychange",this._onVisibility),this._reduced.addEventListener("change",this._onMotion),this._timer=setInterval(()=>{this._render(),(!this._data||Date.now()-new Date(this._data.updated_at)>8*6e4)&&this._fetch()},6e4),this._render(),this._hass&&this._fetch()}disconnectedCallback(){clearInterval(this._timer),clearInterval(this._radarTimer),cancelAnimationFrame(this._raf),this._observer?.disconnect(),this._resize?.disconnect(),document.removeEventListener("visibilitychange",this._onVisibility),this._reduced.removeEventListener("change",this._onMotion)}async _fetch(){if(!this._hass||!this._config||this._fetching)return;this._fetching=!0;let e=this._config;try{let t=this._entity();if(this._config.entity&&!t)throw new Error(`Entity unavailable: ${this._config.entity}`);let a=await this._hass.callWS({type:"atmosphere/data",...t?.attributes?.atmosphere_entry_id?{entry_id:t.attributes.atmosphere_entry_id}:{}});if(e!==this._config)return;this._data=a,this._error=null}catch(t){this._error=t.message||"Connection unavailable"}finally{this._fetching=!1,e!==this._config?this._fetch():this._render()}}get _nl(){return(this._config?.language||this._data?.language||this._hass?.language||"en").startsWith("nl")}_t(e){return Re[this._nl?"nl":"en"][e]||e}_condition(e){return De[e]?.[this._nl?1:0]||"\u2014"}_time(e,t={}){return!e||!Number.isFinite(new Date(e).getTime())?"\u2014":new Intl.DateTimeFormat(this._nl?"nl-BE":"en-GB",{timeZone:this._data?.timezone||"Europe/Brussels",hour:"2-digit",minute:"2-digit",...t}).format(new Date(e))}_date(e,t={}){return new Intl.DateTimeFormat(this._nl?"nl-BE":"en-GB",{timeZone:this._data?.timezone||"Europe/Brussels",...t}).format(new Date(e))}_temp(e){return`${g(e)}${z(e)?"\xB0":""}`}_isStale(){return this._error||!this._data?.available||Date.now()-new Date(this._data.updated_at).getTime()>20*6e4}_warnings(){return(this._data?.warnings||[]).filter(e=>new Date(e.ends_at)>new Date).sort((e,t)=>(t.level||0)-(e.level||0)||new Date(e.starts_at)-new Date(t.starts_at))}_panel(e,t,a=e,n=""){return`<button class="panel ${n}" data-action="detail" data-value="${y(a)}"><h2><span aria-hidden="true">${Te[e]||"\u25C9"}</span>${this._t(e)}<span class="chevron" aria-hidden="true">\u203A</span></h2>${t}</button>`}_render(){if(!this.isConnected)return;let e=this.shadowRoot.querySelector(".body");if(!this._data){e.innerHTML=`<div class="empty"><h1>Atmosphere</h1><p>${this._error?y(this._error):this._nl?"Het weer wordt opgehaald\u2026":"Fetching the weather\u2026"}</p><button data-action="refresh">${this._t("refresh")}</button></div>`;return}let t=this._data,a=t.current,n=t.daily[0]||{},i=this._warnings(),x=this._isStale(),o=Date.now()<new Date(t.sun.sunrise)||Date.now()>new Date(t.sun.sunset),c=a.condition||"cloudy",f=this.shadowRoot.querySelector(".atmosphere");f.dataset.condition=c,f.dataset.night=String(o),f.classList.toggle("paused",this._paused||this._reduced.matches||!this._visible||document.hidden);let s=t.hourly.filter(h=>new Date(h.datetime).getTime()>Date.now()-36e5).slice(0,24).map((h,F)=>F===0?{...h,temperature:a.temperature,condition:c,is_daytime:!o}:h),u=e.querySelector(".hours")?.scrollLeft||0,m=e.querySelector(".days")?.scrollTop||0,k=N.default.getMoonIllumination(new Date),S=Date.now()>new Date(t.sun.sunset).getTime(),L=S?"sunrise":"sunset",B=S?N.default.getTimes(new Date(Date.now()+864e5),t.latitude,t.longitude).sunrise:t.sun.sunset,R=t.air?.european_aqi,Z=z(R)?this._t(R<=20?"good":R<=40?"fair":R<=60?"moderate":R<=80?"poor":R<=100?"veryPoor":"extremelyPoor"):"\u2014",q=a.uv_index,Y=z(q)?this._t(q<3?"lowUV":q<6?"moderate":q<8?"highUV":q<11?"veryHigh":"extreme"):"\u2014",K=z(a.wind_bearing)?["N","NE","E","SE","S","SW","W","NW"][Math.round(a.wind_bearing/45)%8]:"\u2014",O=t.rain.filter(h=>new Date(h.datetime)>new Date&&new Date(h.datetime)<new Date(Date.now()+90*6e4)),J=O.some(h=>(h.precipitation||0)>0||h.might_rain);e.innerHTML=`
       <div class="toolbar"><span class="location-pin" aria-hidden="true">\u2316</span><span>${y(this._config.name||t.name)}</span><button class="motion" data-action="motion" aria-label="${this._t(this._paused||this._reduced.matches?"play":"pause")}" aria-pressed="${!this._paused&&!this._reduced.matches}">${this._paused?"\u25B7":"\u2161"}</button></div>
       <header class="hero"><h1>${y(this._config.name||t.name)}</h1><div class="temperature">${this._temp(a.temperature)}</div><div class="condition">${this._condition(c)}</div><div class="hero-range">${z(a.apparent_temperature)?`${this._t("feels")} ${this._temp(a.apparent_temperature)}<span>\xB7</span>`:""}${this._t("high")}:${this._temp(n.temperature)} ${this._t("low")}:${this._temp(n.templow)}</div></header>
       ${x?`<div class="connection-status" role="status">${this._t("stale")} \xB7 ${this._t("warnUnavailable")}<button data-action="refresh">${this._t("refresh")}</button></div>`:""}
