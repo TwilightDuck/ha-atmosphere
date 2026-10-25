@@ -10,7 +10,7 @@ An Apple Weather-inspired Home Assistant integration, with a living sky and a co
 - Current temperature, feels-like temperature, and the day's high and low.
 - Scrollable hourly forecasts with temperature, rain, and wind modes; seven-day forecasts with temperature range bars and detailed daily outlooks.
 - Local **KMI / IRM warnings**, including upcoming warnings, severity, complete affected-area text, and validity windows. Warnings returned for a location can cover a broader region. Read the warning text for the affected area.
-- KMI rain nowcast, animated radar imagery with a scrubber, and on-demand Windy rain and wind maps.
+- KMI rain nowcast plus large interactive maps for observed radar, forecast rain, and wind, with local town labels, pan/zoom controls, and a location marker.
 - European air quality index and pollutant details, UV, wind and gusts, humidity, dew point, visibility, and pressure.
 - Locally calculated sun and moon information, a shaded moon, illumination, moonrise/set, and the next full-moon date.
 - Responsive layouts down to compact 200–240 px cards, configurable panels, keyboard-accessible details, a visual editor, Dutch and English card text, reduced-motion support, and an animation pause button. KMI forecast/warning text supports Dutch, English, French, and German.
@@ -32,7 +32,7 @@ The integration registers its bundled card resource automatically for storage-mo
 ```yaml
 lovelace:
   resources:
-    - url: /atmosphere/atmosphere-card.js?v=1.1.0
+    - url: /atmosphere/atmosphere-card.js?v=1.2.0
       type: module
 ```
 
@@ -51,7 +51,7 @@ entity: weather.malle_weather
 
 Use the actual entity created by your integration; names depend on the configured location. Optional `name` overrides the displayed place name; optional `language: nl` or `language: en` overrides card language. Without `entity`, the first loaded Atmosphere location is used. Create additional integration entries for additional locations.
 
-Use `show` to choose panels; omitting it shows everything. For example:
+Use `show` to choose panels; omitting it shows the streamlined default layout. For example:
 
 ```yaml
 type: custom:atmosphere-card
@@ -65,7 +65,9 @@ show:
   - radar
 ```
 
-Supported panels are `current`, `warnings`, `hourly`, `daily`, `feels`, `sun`, `air`, `wind`, `uv`, `rain`, `radar`, `moon`, `humidity`, `visibility`, and `pressure`. Remaining panels reflow into the available space. Rain radar opens zoomed around the forecast location, with +/− controls; Windy rain maps also start at a local zoom level. Sky motion advances only while the card is visible, so background tabs do not accumulate a catch-up animation.
+The default layout keeps the forecast, warnings, sun, air quality, wind, UV, rain, radar, and moon. Humidity, visibility, pressure, and feels-like details are grouped behind the current-condition button below the temperature; those tiles remain opt-in.
+
+Supported panels are `current`, `warnings`, `hourly`, `daily`, `feels`, `sun`, `air`, `wind`, `uv`, `rain`, `radar`, `moon`, `humidity`, `visibility`, and `pressure`. Remaining panels reflow into the available space. Weather maps open directly at a local zoom level in an expanded interactive map. Observed radar, forecast precipitation, and wind have separate layers. Sky motion advances only while the card is visible, so background tabs do not accumulate a catch-up animation.
 
 ## Current device location
 
@@ -95,7 +97,7 @@ A warning sensor is **unavailable**, rather than clear, when its data fetch fail
 
 Forecasts, warnings, and radar come from the Royal Meteorological Institute of Belgium, using the `irm-kmi-api` Python library. Atmosphere does **not** depend on the separately installed IRM KMI Home Assistant integration. KMI is polled every seven minutes; optional details and air quality every 30 minutes. A radar outage does not invalidate otherwise healthy forecasts or warnings. Optional source failures leave their values unavailable.
 
-Open-Meteo provides modelled feels-like, humidity, visibility, and dew point. CAMS ENSEMBLE through Open-Meteo provides modelled air quality; these are not measurements from a sensor at your home. Optional requests round coordinates to two decimal places. KMI requests use your configured location. Radar imagery loads from KMI when its detail view opens. Windy is loaded only when you request a map, using rounded coordinates. There is no analytics or telemetry.
+Open-Meteo provides modelled feels-like, humidity, visibility, and dew point. CAMS ENSEMBLE through Open-Meteo provides modelled air quality; these are not measurements from a sensor at your home. Optional requests round coordinates to two decimal places. KMI requests use your configured location. Windy is loaded only when you request a map, using coordinates rounded to four decimal places. The map includes geographic labels; weather-data resolution remains the provider’s native resolution. There is no analytics or telemetry.
 
 All sources require an internet connection. KMI's app API and remote imagery can change independently of this project. The Open-Meteo free endpoint is intended for non-commercial use and has usage limits; see [Open-Meteo terms](https://open-meteo.com/en/terms). Windy maps follow [Windy's terms](https://account.windy.com/agreements/windy-terms-of-use). Weather warnings follow the provider's geographic scope and update cadence.
 
@@ -107,7 +109,7 @@ npm run build
 npm test
 ```
 
-The browser suite covers responsive rendering (including compact 240 px cards), browser GPS, per-viewer app GPS, configurable panels, focus-safe animation resume, hourly modes, detail dialogs, warning-feed outage behavior, radar scrubbing, map loading, reduced motion, and sparse optional data. It uses a captured public sample, not a fabricated live forecast.
+The eleven browser scenarios cover icon centering, smooth graph geometry, interactive map layers, and responsive rendering (including compact 240 px cards), browser GPS, per-viewer app GPS, configurable panels, focus-safe animation resume, hourly modes, detail dialogs, warning-feed outage behavior, map layer switching, map loading, reduced motion, and sparse optional data. It uses a captured public sample, not a fabricated live forecast.
 
 For the Home Assistant feature check:
 

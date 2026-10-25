@@ -1082,58 +1082,6 @@ dialog::backdrop {
   font-size: 13px !important;
   color: #bed4e7 !important;
 }
-.radar-stage {
-  position: relative;
-  aspect-ratio: 1.25;
-  background: #192e3f;
-  border-radius: 15px;
-  overflow: hidden;
-}
-.radar-stage img {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  inset: 0;
-  object-fit: contain;
-}
-.radar-error {
-  position: absolute;
-  inset: 0;
-  background: #172e45;
-  place-content: center;
-  text-align: center;
-  padding: 24px;
-  font-size: 16px;
-}
-.radar-error:not([hidden]) {
-  display: grid;
-}
-.radar-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 15px 0;
-}
-.radar-controls button {
-  padding: 8px 10px;
-  white-space: nowrap;
-  border-radius: 20px;
-  background: #ffffff15;
-  font-size: 13px;
-}
-.radar-slider {
-  flex: 1;
-  min-width: 0;
-  accent-color: #b8e4ff;
-}
-.radar-time {
-  font-size: 13px;
-  min-width: 44px;
-}
-.radar-caption {
-  font-size: 11px;
-  opacity: 0.65;
-}
 .map-switch {
   display: flex;
   gap: 8px;
@@ -1383,7 +1331,6 @@ dialog::backdrop {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .metrics .panel {
-    display: block !important;
     min-height: 155px;
     padding: 16px 14px 14px;
   }
@@ -1572,30 +1519,6 @@ dialog::backdrop {
 .tracker-choice:disabled {
   opacity: 0.4;
 }
-.radar-layers {
-  position: absolute;
-  inset: 0;
-}
-.radar-zoom-controls {
-  display: flex;
-  gap: 6px;
-  position: absolute;
-  z-index: 2;
-  right: 35px;
-  margin-top: 12px;
-}
-.radar-zoom-controls button {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: #d7edffe6;
-  color: #173449;
-  font-size: 24px;
-  box-shadow: 0 2px 6px #0002;
-}
-.radar-stage {
-  aspect-ratio: 640/490;
-}
 @container (max-width:300px) {
   .toolbar {
     gap: 4px;
@@ -1680,4 +1603,320 @@ dialog::backdrop {
   .small-metrics[data-count] {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Shared vector geometry avoids font-baseline differences between platforms. */
+.ui-icon {
+  display: inline-block;
+  flex: 0 0 auto;
+  vertical-align: middle;
+  pointer-events: none;
+}
+h2 > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 20px;
+  line-height: 1;
+}
+h2 {
+  min-height: 20px;
+}
+.chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 20px;
+}
+.segmented button,
+.motion,
+.location-pin,
+.home-location,
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  flex-shrink: 0;
+  padding: 0;
+}
+.segmented button {
+  width: 35px;
+  height: 29px;
+}
+.close {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+}
+.condition {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  background: none;
+  color: inherit;
+  padding: 0 6px;
+  margin-bottom: 7px;
+  line-height: 1.3;
+}
+.condition .ui-icon {
+  opacity: 0.5;
+}
+.day-condition {
+  min-height: 45px;
+  display: grid;
+  grid-template-rows: 30px 11px;
+  align-items: center;
+  justify-items: center;
+  gap: 2px;
+}
+.day-condition .weather-icon {
+  width: 28px;
+  height: 30px;
+}
+.day-condition small {
+  line-height: 11px;
+}
+.hour {
+  display: grid;
+  grid-template-rows: 17px 37px 13px 23px;
+  justify-items: center;
+  align-items: center;
+  gap: 3px;
+}
+.hour .weather-icon {
+  margin: 0;
+  width: 32px;
+  height: 35px;
+}
+.hour .chance {
+  height: 13px;
+  line-height: 13px;
+}
+.hour > small {
+  line-height: 11px;
+  grid-row: 5;
+}
+.clouds.bank {
+  top: 180px;
+  left: -28%;
+  width: 160%;
+  height: 520px;
+  opacity: 0.22;
+  filter: blur(5px);
+  background-position: 40% 60%;
+  will-change: transform;
+}
+.clouds.near {
+  opacity: 0.36;
+}
+.rays {
+  transform-origin: 38% 0;
+  will-change: transform;
+}
+.sun-orb {
+  will-change: transform;
+}
+.sky-moon {
+  position: absolute;
+  right: 12%;
+  top: 28px;
+  width: 112px;
+  height: 112px;
+  opacity: 0;
+  filter: drop-shadow(0 0 20px #b7d5ff22);
+}
+.atmosphere[data-night="true"] .sky-moon {
+  opacity: 0.88;
+}
+.atmosphere[data-night="true"] .sun-orb {
+  opacity: 0.14;
+}
+.atmosphere[data-night="true"] .stars {
+  opacity: 0;
+}
+.atmosphere[data-night="true"] .clouds.bank {
+  opacity: 0.1;
+}
+.atmosphere[data-condition="sunny"] .clouds.bank {
+  opacity: 0.12;
+}
+.atmosphere[data-condition="fog"] .clouds.bank {
+  opacity: 0.5;
+  filter: blur(22px);
+}
+.atmosphere[data-condition*="rain"] .clouds.near,
+.atmosphere[data-condition="pouring"] .clouds.near {
+  opacity: 0.64;
+}
+.current-detail {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.current-detail .detail-temperature {
+  margin-bottom: 0;
+}
+.current-detail p {
+  margin-top: 0;
+}
+.metrics[data-count="5"] .panel:last-child {
+  grid-column: 1/-1;
+  min-height: 130px;
+}
+.map-dialog {
+  width: min(1140px, calc(100vw - 24px));
+  max-height: 94dvh;
+  overflow: hidden;
+  background: #173753;
+}
+.map-dialog .dialog-inner {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  max-height: 94dvh;
+}
+.map-dialog .dialog-header {
+  margin-bottom: 14px;
+}
+.map-dialog .map-switch {
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 8px;
+}
+.map-switch button[aria-pressed="true"] {
+  background: #c9e7ff3b;
+  border-color: #d9f0ff55;
+}
+.map-dialog .map-host {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.map-dialog .map-host iframe {
+  height: min(72dvh, 760px);
+  min-height: 320px;
+  margin: 0;
+  border-radius: 14px;
+  background: #1c3d56;
+  flex: 1 1 auto;
+}
+.map-host > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-end;
+  font-size: 11px;
+  opacity: 0.75;
+  margin: 9px 2px 0;
+}
+.detail-chart svg {
+  overflow: visible;
+}
+.detail-chart {
+  padding-top: 12px;
+}
+.detail-chart circle {
+  filter: drop-shadow(0 0 4px #b9efff22);
+}
+@container (max-width:540px) {
+  .metrics[data-count="5"] .panel:last-child {
+    grid-column: 1/-1;
+  }
+  .sky-moon {
+    right: 7%;
+    width: 88px;
+    height: 88px;
+    top: 22px;
+  }
+  .segmented button {
+    width: 31px;
+  }
+  .day-condition {
+    min-height: 41px;
+    grid-template-rows: 28px 10px;
+    gap: 1px;
+  }
+  .hour {
+    grid-template-rows: 16px 34px 12px 22px;
+  }
+}
+@media (max-width: 600px) {
+  .map-dialog {
+    width: 100vw;
+    max-width: 100vw;
+    height: 96dvh;
+    max-height: 96dvh;
+    margin: 4dvh 0 0;
+    border-radius: 22px 22px 0 0;
+  }
+  .map-dialog .dialog-inner {
+    height: 100%;
+    max-height: 96dvh;
+    padding: 17px 12px;
+  }
+  .map-dialog .dialog-header {
+    padding: 0 5px;
+  }
+  .map-dialog .dialog-header h2 {
+    font-size: 20px;
+  }
+  .map-dialog .map-host {
+    flex: 1;
+  }
+  .map-dialog .map-host iframe {
+    height: 100%;
+    min-height: 0;
+    border-radius: 12px;
+  }
+  .map-switch button {
+    font-size: 12px;
+    padding: 9px 12px;
+  }
+  .close {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+  }
+}
+.atmosphere[data-night="true"][data-condition="cloudy"] .sky-moon {
+  opacity: 0.28;
+}
+.atmosphere[data-night="true"][data-condition*="rain"] .sky-moon,
+.atmosphere[data-night="true"][data-condition="pouring"] .sky-moon,
+.atmosphere[data-night="true"][data-condition*="snow"] .sky-moon {
+  opacity: 0;
+}
+.sky:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 78% 12%, #ffe3b4aa, transparent 43%),
+    linear-gradient(178deg, transparent 20%, #ddae9c55 73%, #e9c6ac88);
+  opacity: var(--twilight, 0);
+  pointer-events: none;
+}
+.atmosphere[data-night="true"] .clouds.near {
+  opacity: 0.22;
+}
+.atmosphere[data-condition="cloudy"] .rays {
+  opacity: 0.1;
+}
+.panel[data-section="rain"] .detail-chart {
+  margin: 7px 0 -4px;
+  padding: 0;
+}
+.panel[data-section="rain"] .detail-chart svg {
+  height: 75px;
+  width: 100%;
+}
+.panel[data-section="rain"] .chart-times {
+  display: none;
 }

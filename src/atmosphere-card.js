@@ -1,7 +1,8 @@
 import SunCalc from "suncalc";
 import { styles } from "./styles.js";
 
-const radarBase = new URL("./radar-base.png", import.meta.url).href;
+import { glyph } from "./icons.js";
+import { smoothPath } from "./curves.js";
 
 const esc = (value) =>
   String(value ?? "").replace(
@@ -247,7 +248,7 @@ function icon(condition, night = false, size = 28) {
     if (thunder)
       body += '<path d="m22 24-7 10h6l-3 9 12-14h-8l4-5Z" fill="#ffcf55"/>';
   }
-  return `<svg class="weather-icon" width="${size}" height="${size}" viewBox="0 0 42 44" aria-hidden="true">${body}</svg>`;
+  return `<svg class="weather-icon" width="${size}" height="${size}" viewBox="-2 -2 46 48" aria-hidden="true">${body}</svg>`;
 }
 const sections = [
   "current",
@@ -267,23 +268,9 @@ const sections = [
   "pressure",
 ];
 
-const symbols = {
-  hourly: "◷",
-  daily: "▦",
-  feels: "♨",
-  sunset: "☀",
-  sunrise: "☀",
-  air: "⠿",
-  wind: "≋",
-  uv: "☀",
-  rain: "◒",
-  humidity: "♧",
-  visibility: "◉",
-  pressure: "◴",
-  moon: "☾",
-  radar: "◉",
-  warnings: "△",
-};
+const defaultSections = sections.filter(
+  (key) => !["feels", "humidity", "visibility", "pressure"].includes(key),
+);
 
 class AtmosphereCard extends HTMLElement {
   constructor() {
@@ -293,7 +280,7 @@ class AtmosphereCard extends HTMLElement {
     this._paused = false;
     this._fetching = false;
     this._reduced = matchMedia("(prefers-reduced-motion: reduce)");
-    this.shadowRoot.innerHTML = `<style>${styles}</style><ha-card><div class="atmosphere"><div class="sky" aria-hidden="true"><div class="sun-orb"></div><div class="rays"></div><div class="stars"></div><div class="clouds far"></div><div class="clouds near"></div><canvas class="precipitation"></canvas><div class="horizon"></div></div><div class="body"></div></div></ha-card><dialog aria-labelledby="detail-title"><div class="dialog-inner"></div></dialog>`;
+    this.shadowRoot.innerHTML = `<style>${styles}</style><ha-card><div class="atmosphere"><div class="sky" aria-hidden="true"><div class="sun-orb"></div><div class="rays"></div><div class="stars"></div><div class="clouds far"></div><div class="clouds near"></div><div class="clouds bank"></div><canvas class="sky-moon" width="240" height="240"></canvas><canvas class="precipitation"></canvas><div class="horizon"></div></div><div class="body"></div></div></ha-card><dialog aria-labelledby="detail-title"><div class="dialog-inner"></div></dialog>`;
     this.shadowRoot.addEventListener("click", (e) => {
       const button = e.target.closest("[data-action]");
       if (button) this._action(button.dataset.action, button.dataset.value);
@@ -304,17 +291,16 @@ class AtmosphereCard extends HTMLElement {
     this._onVisibility = () => this._animate();
     this._onMotion = () => {
       this._animate();
-      if (this._reduced.matches) {
-        this._radarPlaying = false;
-        clearInterval(this._radarTimer);
-      }
+
       this._render();
     };
     this.shadowRoot
       .querySelector("dialog")
-      .addEventListener("close", () => clearInterval(this._radarTimer));
-    this._radarFrame = 0;
-    this._radarZoom = 2.6;
+      .addEventListener("close", () =>
+        this.shadowRoot
+          .querySelectorAll("dialog iframe")
+          .forEach((frame) => frame.remove()),
+      );
     this._skyTime = 0;
   }
   setConfig(config) {
@@ -392,7 +378,7 @@ class AtmosphereCard extends HTMLElement {
   }
   disconnectedCallback() {
     clearInterval(this._timer);
-    clearInterval(this._radarTimer);
+
     cancelAnimationFrame(this._raf);
     this._observer?.disconnect();
     this._resize?.disconnect();
@@ -486,7 +472,7 @@ class AtmosphereCard extends HTMLElement {
       );
   }
   _panel(title, content, action = title, classes = "") {
-    return `<button class="panel ${classes}" data-section="${title === "sunrise" || title === "sunset" ? "sun" : title}" data-action="detail" data-value="${esc(action)}"><h2><span aria-hidden="true">${symbols[title] || "◉"}</span>${this._t(title)}<span class="chevron" aria-hidden="true">›</span></h2>${content}</button>`;
+    return `<button class="panel ${classes}" data-section="${title === "sunrise" || title === "sunset" ? "sun" : title}" data-action="detail" data-value="${esc(action)}"><h2><span aria-hidden="true">${glyph(title, 18)}</span>${this._t(title)}<span class="chevron" aria-hidden="true">${glyph("chevron", 14)}</span></h2>${content}</button>`;
   }
   _render() {
     if (!this.isConnected) return;
@@ -507,6 +493,14 @@ class AtmosphereCard extends HTMLElement {
     const sky = this.shadowRoot.querySelector(".atmosphere");
     sky.dataset.condition = condition;
     sky.dataset.night = String(night);
+    const edge = Math.min(
+      Math.abs(Date.now() - new Date(d.sun.sunrise)),
+      Math.abs(Date.now() - new Date(d.sun.sunset)),
+    );
+    sky.style.setProperty(
+      "--twilight",
+      String(clamp(1 - edge / (85 * 60000), 0, 1) * (!night ? 0.6 : 0.25)),
+    );
     sky.classList.toggle(
       "paused",
       this._paused ||
@@ -578,33 +572,27 @@ class AtmosphereCard extends HTMLElement {
       (r) => (r.precipitation || 0) > 0 || r.might_rain,
     );
     body.innerHTML = `
-      <div class="toolbar"><button class="location-pin ${this._deviceCoords ? "selected" : ""}" data-action="locate" aria-label="${this._t("currentLocation")}" aria-busy="${!!this._locationBusy}" title="${this._t("currentLocation")}">⌖</button><span>${esc(this._deviceCoords ? d.name : this._config.name || d.name)}</span>${this._deviceCoords ? `<button class="home-location" data-action="home" aria-label="${this._t("homeLocation")}">⌂</button>` : ""}<button class="motion" data-action="motion" aria-label="${this._t(this._paused || this._reduced.matches ? "play" : "pause")}" aria-pressed="${!this._paused && !this._reduced.matches}">${this._paused ? "▷" : "Ⅱ"}</button></div>
-      <header class="hero" data-section="current"><h1>${esc(this._deviceCoords ? d.name : this._config.name || d.name)}</h1><div class="temperature">${this._temp(c.temperature)}</div><div class="condition">${this._condition(condition)}</div><div class="hero-range">${valid(c.apparent_temperature) ? `${this._t("feels")} ${this._temp(c.apparent_temperature)}<span>·</span>` : ""}${this._t("high")}:${this._temp(today.temperature)} ${this._t("low")}:${this._temp(today.templow)}</div></header>
+      <div class="toolbar"><button class="location-pin ${this._deviceCoords ? "selected" : ""}" data-action="locate" aria-label="${this._t("currentLocation")}" aria-busy="${!!this._locationBusy}" title="${this._t("currentLocation")}">${glyph("location", 20)}</button><span>${esc(this._deviceCoords ? d.name : this._config.name || d.name)}</span>${this._deviceCoords ? `<button class="home-location" data-action="home" aria-label="${this._t("homeLocation")}">${glyph("home", 22)}</button>` : ""}<button class="motion" data-action="motion" aria-label="${this._t(this._paused || this._reduced.matches ? "play" : "pause")}" aria-pressed="${!this._paused && !this._reduced.matches}">${glyph(this._paused ? "play" : "pause", 16)}</button></div>
+      <header class="hero" data-section="current"><h1>${esc(this._deviceCoords ? d.name : this._config.name || d.name)}</h1><div class="temperature">${this._temp(c.temperature)}</div><button class="condition" data-action="detail" data-value="current" aria-label="${this._t("current")}">${this._condition(condition)}${glyph("chevron", 14)}</button><div class="hero-range">${valid(c.apparent_temperature) ? `${this._t("feels")} ${this._temp(c.apparent_temperature)}<span>·</span>` : ""}${this._t("high")}:${this._temp(today.temperature)} ${this._t("low")}:${this._temp(today.templow)}</div></header>
       ${stale ? `<div class="connection-status" role="status">${this._t("stale")} · ${this._t("warnUnavailable")}<button data-action="refresh">${this._t("refresh")}</button></div>` : ""}
       ${this._locationBusy || this._locationError ? `<div class="location-status" role="status">${esc(this._locationBusy ? this._t("locating") : this._locationError)}${!this._locationBusy && this._appTrackers().length ? `<button data-action="app-location">${this._t("appLocation")}</button>` : ""}</div>` : ""}
       ${this._locationNote ? `<div class="location-note">${esc(this._locationNote)}</div>` : ""}
       <div class="forecast-grid">
-        <button data-section="warnings" class="panel warning ${warnings.length ? "has-warning" : ""} level-${warnings[0]?.level || 0}" data-action="detail" data-value="warnings"><h2><span aria-hidden="true">${warnings.length ? "△" : "✓"}</span>${this._t("warnings")}<span class="chevron">›</span></h2>${warnings.length ? `<div class="warning-title">${esc(warnings[0].friendly_name)}</div><div class="warning-line"><span class="severity-dot"></span>${this._t(stale ? "stale" : new Date(warnings[0].starts_at) <= new Date() ? "active" : "upcoming")} · ${this._time(warnings[0].starts_at)} – ${this._time(warnings[0].ends_at)}</div><p class="warning-preview">${esc(warnings[0].text)}</p>${warnings.length > 1 ? `<span class="warning-count">+${warnings.length - 1}</span>` : ""}` : `<div class="warning-title">${this._t(stale ? "warnUnavailable" : "clear")}</div><div class="warning-line">KMI / IRM</div>`}</button>
-        <section data-section="hourly" class="panel hourly"><div class="panel-header"><h2><span aria-hidden="true">◷</span>${this._t("hourly")}</h2><div class="segmented" role="group" aria-label="${this._t("hourly")}">${["temperature", "rain", "wind"].map((m, i) => `<button data-action="mode" data-value="${m}" aria-label="${this._t(m)}" aria-pressed="${this._mode === m}">${["°", "♧", "≋"][i]}</button>`).join("")}</div></div><div class="hours">${hourly.map((f, i) => `<button class="hour" data-action="hour" data-value="${esc(f.datetime)}"><span>${i === 0 ? this._t("now") : this._time(f.datetime, { minute: undefined })}</span>${icon(f.condition, !f.is_daytime, 32)}<span class="chance">${valid(f.precipitation_probability) ? num(f.precipitation_probability) + "%" : "—"}</span><strong>${this._mode === "temperature" ? this._temp(f.temperature) : this._mode === "rain" ? num(f.precipitation, 1) : num(f.wind_speed)}</strong>${this._mode !== "temperature" ? `<small>${this._mode === "rain" ? "mm" : "km/h"}</small>` : ""}</button>`).join("")}</div></section>
-        <section data-section="daily" class="panel daily"><h2><span aria-hidden="true">▦</span>${d.daily.length} ${this._nl ? "dagen" : "days"}</h2><div class="days">${this._dailyRows(d.daily)}</div></section>
+        <button data-section="warnings" class="panel warning ${warnings.length ? "has-warning" : ""} level-${warnings[0]?.level || 0}" data-action="detail" data-value="warnings"><h2><span aria-hidden="true">${glyph(warnings.length ? "warnings" : "check", 18)}</span>${this._t("warnings")}<span class="chevron" aria-hidden="true">${glyph("chevron", 14)}</span></h2>${warnings.length ? `<div class="warning-title">${esc(warnings[0].friendly_name)}</div><div class="warning-line"><span class="severity-dot"></span>${this._t(stale ? "stale" : new Date(warnings[0].starts_at) <= new Date() ? "active" : "upcoming")} · ${this._time(warnings[0].starts_at)} – ${this._time(warnings[0].ends_at)}</div><p class="warning-preview">${esc(warnings[0].text)}</p>${warnings.length > 1 ? `<span class="warning-count">+${warnings.length - 1}</span>` : ""}` : `<div class="warning-title">${this._t(stale ? "warnUnavailable" : "clear")}</div><div class="warning-line">KMI / IRM</div>`}</button>
+        <section data-section="hourly" class="panel hourly"><div class="panel-header"><h2><span aria-hidden="true">${glyph("hourly", 18)}</span>${this._t("hourly")}</h2><div class="segmented" role="group" aria-label="${this._t("hourly")}">${["temperature", "rain", "wind"].map((m, i) => `<button data-action="mode" data-value="${m}" aria-label="${this._t(m)}" aria-pressed="${this._mode === m}">${glyph(m, 18)}</button>`).join("")}</div></div><div class="hours">${hourly.map((f, i) => `<button class="hour" data-action="hour" data-value="${esc(f.datetime)}"><span>${i === 0 ? this._t("now") : this._time(f.datetime, { minute: undefined })}</span>${icon(f.condition, !f.is_daytime, 32)}<span class="chance">${valid(f.precipitation_probability) ? num(f.precipitation_probability) + "%" : "—"}</span><strong>${this._mode === "temperature" ? this._temp(f.temperature) : this._mode === "rain" ? num(f.precipitation, 1) : num(f.wind_speed)}</strong>${this._mode !== "temperature" ? `<small>${this._mode === "rain" ? "mm" : "km/h"}</small>` : ""}</button>`).join("")}</div></section>
+        <section data-section="daily" class="panel daily"><h2><span aria-hidden="true">${glyph("daily", 18)}</span>${d.daily.length} ${this._nl ? "dagen" : "days"}</h2><div class="days">${this._dailyRows(d.daily)}</div></section>
         <div class="metrics">
           ${this._panel("feels", `<div class="metric-value">${this._temp(c.apparent_temperature)}</div><div class="metric-note">${this._nl ? "Werkelijk" : "Actual"} ${this._temp(c.temperature)}</div><div class="feels-line"><span style="left:${clamp(50 + ((c.apparent_temperature ?? c.temperature) - c.temperature) * 4, 5, 95)}%"></span></div>`)}
           ${this._panel(sunKey, `<div class="metric-value">${this._time(sunNext)}</div>${this._sunArc()}<div class="metric-note sun-note">${this._t(sunKey === "sunset" ? "sunrise" : "sunset")} ${this._time(d.sun[sunKey === "sunset" ? "sunrise" : "sunset"])}</div>`, "sun")}
           ${this._panel("air", `<div class="aq-head"><span class="metric-value">${num(aq)}</span><span class="aq-category">${aqTitle}</span></div><div class="spectrum aqi"><i style="left:${clamp(((aq || 0) / 120) * 100, 2, 98)}%"></i></div><div class="metric-note">European AQI</div>`)}
-          ${this._panel("wind", `<div class="wind-layout"><div><span class="metric-value">${num(c.wind_speed)}</span><span class="unit">km/h</span><div class="metric-note">${this._t("gusts")} ${num(c.wind_gust_speed)}</div></div><div class="compass"><span class="north">N</span><span class="west">W</span><span class="east">E</span><span class="south">S</span><div class="needle" style="transform:rotate(${valid(c.wind_bearing) ? c.wind_bearing : 0}deg)"></div><b>${windDirection}</b></div></div>`)}
+          ${this._panel("wind", `<div class="wind-layout"><div><span class="metric-value">${num(c.wind_speed)}</span><span class="unit">km/h</span></div><div class="compass"><span class="north">N</span><span class="west">W</span><span class="east">E</span><span class="south">S</span><div class="needle" style="transform:rotate(${valid(c.wind_bearing) ? c.wind_bearing : 0}deg)"></div><b>${windDirection}</b></div></div><div class="metric-note">${this._t("gusts")} ${num(c.wind_gust_speed)} km/h</div>`)}
           ${this._panel("uv", `<div class="metric-value">${num(uv, 1)}</div><div class="metric-note">${uvTitle}</div><div class="spectrum uv"><i style="left:${clamp(((uv || 0) / 12) * 100, 2, 98)}%"></i></div>`)}
           ${this._panel(
             "rain",
-            `<div class="metric-value">${num(today.precipitation, 1)}<span class="unit">mm</span></div><div class="metric-note">${this._t("today")}</div><div class="mini-rain">${hourly
-              .slice(0, 18)
-              .map(
-                (f) =>
-                  `<i style="height:${clamp((f.precipitation || 0) * 35 + 3, 3, 40)}px"></i>`,
-              )
-              .join("")}</div>`,
+            `<div class="metric-value">${num(today.precipitation, 1)}<span class="unit">mm</span></div><div class="metric-note">${this._t("today")}</div>${this._hourChart(hourly, "precipitation")}`,
           )}
         </div>
-        <section data-section="radar" class="panel radar-panel"><div class="panel-header"><h2><span aria-hidden="true">◉</span>${this._t("radar")}</h2><button class="text-button" data-action="detail" data-value="radar">${this._t("rainmap")} <span aria-hidden="true">↗</span></button></div><button class="rain-outlook" data-action="detail" data-value="radar"><span>${this._t(willRain ? "rainSoon" : "noRain")}</span><span aria-hidden="true">›</span></button><div class="rain-chart">${this._rainChart(rainNext)}</div><div class="chart-times"><span>${this._t("now")}</span><span>+30 min</span><span>+60 min</span><span>+90 min</span></div></section>
+        <section data-section="radar" class="panel radar-panel"><div class="panel-header"><h2><span aria-hidden="true">${glyph("radar", 18)}</span>${this._t("radar")}</h2><button class="text-button" data-action="detail" data-value="radar">${this._t("rainmap")} <span aria-hidden="true">${glyph("arrow", 14)}</span></button></div><button class="rain-outlook" data-action="detail" data-value="radar"><span>${this._t(willRain ? "rainSoon" : "noRain")}</span><span aria-hidden="true">${glyph("chevron", 14)}</span></button><div class="rain-chart">${this._rainChart(rainNext)}</div><div class="chart-times"><span>${this._t("now")}</span><span>+30 min</span><span>+60 min</span><span>+90 min</span></div></section>
         ${this._panel("moon", `<div class="moon-layout"><div><div class="moon-phase">${this._moonName(moon.phase)}</div><div class="metric-note">${num(moon.fraction * 100)}% ${this._t("illuminated")}</div><div class="moon-date">${this._date(this._nextFullMoon(), { day: "numeric", month: "short" })}<span>${this._t("nextFull")}</span></div></div><canvas class="moon" width="240" height="240" aria-hidden="true"></canvas></div>`, "moon", "moon-panel")}
         <div class="small-metrics">${this._panel("humidity", `<div class="small-value">${num(c.humidity)}<span>%</span></div><div class="metric-note">${this._t("dew")} ${this._temp(c.dew_point)}</div>`)}${this._panel("visibility", `<div class="small-value">${num(c.visibility, 1)}<span>km</span></div>`)}${this._panel("pressure", `<div class="small-value">${num(c.pressure)}<span>hPa</span></div><div class="pressure-scale"><span>980</span><i style="left:${clamp((((c.pressure || 1013) - 980) / 60) * 100, 0, 100)}%"></i><span>1040</span></div>`)}</div>
       </div><footer><span>${this._t("updated")} ${this._time(d.updated_at)} · KMI / IRM</span><button data-action="detail" data-value="source">${this._t("source")} ⓘ</button></footer>`;
@@ -612,6 +600,7 @@ class AtmosphereCard extends HTMLElement {
     body.querySelector(".days").scrollTop = scrollTop;
     this._applyVisibility();
     this._drawMoon(body.querySelector(".moon"));
+    this._drawMoon(this.shadowRoot.querySelector(".sky-moon"));
     this._sizeCanvas();
     this._animate();
   }
@@ -633,14 +622,30 @@ class AtmosphereCard extends HTMLElement {
       p = clamp((Date.now() - start) / (end - start), 0, 1),
       x = 10 + 180 * p,
       y = 57 - Math.sin(p * Math.PI) * 47;
-    return `<svg class="sun-arc" viewBox="0 0 200 76" aria-hidden="true"><path d="M-10 65 Q10 65 40 35 Q100 -28 160 35 Q190 65 210 65" fill="none" stroke="white" stroke-opacity=".22" stroke-width="5"/><path d="M0 57h200" stroke="white" stroke-opacity=".3"/><circle cx="${x}" cy="${y}" r="6" fill="#fff8d9" style="filter:drop-shadow(0 0 6px #fff)"/></svg>`;
+    const arc = smoothPath(
+      Array.from({ length: 25 }, (_, i) => {
+        const x = -10 + (i * 220) / 24;
+        return [x, 57 - Math.sin(((x - 10) / 180) * Math.PI) * 47];
+      }),
+    );
+    return `<svg class="sun-arc" viewBox="0 0 200 76" aria-hidden="true"><path d="${arc}" fill="none" stroke="white" stroke-opacity=".22" stroke-width="5"/><path d="M0 57h200" stroke="white" stroke-opacity=".3"/><circle cx="${x}" cy="${y}" r="6" fill="#fff8d9" style="filter:drop-shadow(0 0 6px #fff)"/></svg>`;
   }
   _rainChart(rain) {
     if (!rain.length) return '<span class="no-data">—</span>';
     const max = Math.max(1, ...rain.map((r) => r.precipitation || 0));
-    const position = (r) =>
-      clamp(((new Date(r.datetime) - Date.now()) / (90 * 60000)) * 500, 0, 500);
-    return `<svg viewBox="0 0 500 64" preserveAspectRatio="none" aria-label="${this._t("rain")}"><path d="M0 62H500M0 32H500" stroke="white" stroke-opacity=".1"/>${rain.map((r, i) => `<rect x="${position(r)}" y="${61 - ((r.precipitation || 0) / max) * 56}" width="${Math.max(1, 500 / rain.length - 2)}" height="${Math.max(1, ((r.precipitation || 0) / max) * 56)}" fill="#91dbfa" rx="2"/>`).join("")}</svg>`;
+    const points = rain
+      .map((r) => [
+        clamp(
+          ((new Date(r.datetime) - Date.now()) / (90 * 60000)) * 500,
+          0,
+          500,
+        ),
+        60 - ((r.precipitation || 0) / max) * 54,
+      ])
+      .filter((p, i, a) => !i || p[0] > a[i - 1][0]);
+    const curve = smoothPath(points),
+      area = curve + `L${points.at(-1)[0]},62L${points[0][0]},62Z`;
+    return `<svg viewBox="0 0 500 64" preserveAspectRatio="none" aria-label="${this._t("rain")}"><defs><linearGradient id="nowcast-fill" x2="0" y2="1"><stop stop-color="#9ce1ee" stop-opacity=".5"/><stop offset="1" stop-color="#9ce1ee" stop-opacity=".02"/></linearGradient></defs><path d="M0 62H500M0 32H500" stroke="white" stroke-opacity=".1"/><path d="${area}" fill="url(#nowcast-fill)"/><path d="${curve}" fill="none" stroke="#aeeaf3" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
   }
   _moonName(phase) {
     return this._t(
@@ -755,47 +760,124 @@ class AtmosphereCard extends HTMLElement {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const condition = this._data?.current?.condition || "";
     if (!moving) return;
-    const precipitation = /(rain|pour|snow|hail|lightning)/.test(condition);
-    const clouds = this.shadowRoot.querySelectorAll(".clouds");
-    const snow = /snow/.test(condition),
-      particles = Array.from(
-        { length: precipitation ? (snow ? 65 : 100) : 0 },
-        () => ({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
-          s: 0.4 + Math.random(),
-          r: 1 + Math.random() * 2,
-        }),
-      );
+    const night =
+      this.shadowRoot.querySelector(".atmosphere").dataset.night === "true";
+    const precipitation = /(rain|pour|snow|hail|lightning)/.test(condition),
+      snow = /snow|hail/.test(condition);
+    const wind = clamp((this._data?.current?.wind_speed || 12) / 22, 0.55, 2.5);
+    const clouds = this.shadowRoot.querySelectorAll(".clouds"),
+      sun = this.shadowRoot.querySelector(".sun-orb"),
+      rays = this.shadowRoot.querySelector(".rays"),
+      horizon = this.shadowRoot.querySelector(".horizon");
+    const mode = precipitation
+      ? snow
+        ? "snow"
+        : "rain"
+      : night
+        ? "stars"
+        : wind > 1
+          ? "wind"
+          : "motes";
+    const signature = `${mode}:${canvas.width}:${canvas.height}`;
+    if (this._particleSignature !== signature) {
+      this._particleSignature = signature;
+      const count =
+        mode === "stars"
+          ? 95
+          : mode === "rain"
+            ? 125
+            : mode === "snow"
+              ? 80
+              : 32;
+      this._particles = Array.from({ length: count }, (_, i) => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        s: 0.4 + Math.random(),
+        r: 0.7 + Math.random() * 1.6,
+        phase: i * 2.39,
+      }));
+    }
     let last = null;
     const frame = (time) => {
       const dt = last === null ? 0 : Math.min((time - last) / 1000, 0.05);
-      this._skyTime += dt;
-      const far = 0.5 - 0.5 * Math.cos((this._skyTime / 28) * Math.PI);
-      const near = 0.5 + 0.5 * Math.cos((this._skyTime / 42) * Math.PI);
-      clouds[0].style.transform = `translateX(${-4 + 12 * far}%) scale(${1.03 + 0.1 * far})`;
-      clouds[1].style.transform = `translateX(${-4 + 12 * near}%) scale(${1.03 + 0.1 * near})`;
       last = time;
+      this._skyTime += dt;
+      const t = this._skyTime,
+        far = 0.5 - 0.5 * Math.cos(((t * wind) / 19) * Math.PI),
+        near = 0.5 + 0.5 * Math.cos(((t * wind) / 28) * Math.PI);
+      clouds[0].style.transform = `translateX(${-8 + 20 * far}%) translateY(${Math.sin(t / 17) * 5}px) scale(${1.02 + 0.07 * far})`;
+      clouds[1].style.transform = `translateX(${-12 + 25 * near}%) translateY(${Math.cos(t / 13) * 9}px) scale(${1.05 + 0.08 * near})`;
+      clouds[2].style.transform = `translateX(${Math.sin((t * wind) / 23) * 13}%) translateY(${Math.sin(t / 11) * 13}px) scale(1.12)`;
+      sun.style.transform = `translateX(-50%) translateY(${Math.sin(t / 12) * 5}px) scale(${1 + 0.04 * Math.sin(t / 9)})`;
+      rays.style.transform = `rotate(${16 + Math.sin(t / 18) * 5}deg) translateX(${Math.sin(t / 10) * 15}px)`;
+      horizon.style.opacity = String(0.65 + 0.2 * Math.sin(t / 13));
+      horizon.style.transform = `translateX(${Math.sin(t / 31) * 3}%)`;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = "rgba(210,233,255,.3)";
-      ctx.fillStyle = "rgba(238,247,255,.7)";
-      ctx.lineWidth = 0.8;
-      for (const p of particles) {
-        p.y += dt * (snow ? 25 : 530) * p.s;
-        p.x += dt * (snow ? Math.sin(time / 2000 + p.s) * 12 : -95);
-        if (p.y > canvas.height + 30) {
-          p.y = -30;
-          p.x = Math.random() * canvas.width;
-        }
-        if (p.x < 0) p.x = canvas.width;
+      for (const p of this._particles) {
         ctx.beginPath();
-        if (snow) {
+        if (mode === "stars") {
+          ctx.globalAlpha =
+            (0.3 + 0.6 * (0.5 + 0.5 * Math.sin(t * 0.7 + p.phase))) *
+            clamp(1 - p.y / canvas.height, 0.15, 1);
+          ctx.fillStyle = "#edf6ff";
+          ctx.arc(p.x, p.y, p.r * 0.65, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (mode === "motes") {
+          p.y -= dt * 5 * p.s;
+          p.x += dt * 8 * p.s;
+          ctx.globalAlpha = 0.13 + 0.1 * Math.sin(t + p.phase);
+          ctx.fillStyle = "#fff9df";
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (mode === "wind") {
+          p.x += dt * 80 * wind * p.s;
+          p.y += dt * Math.sin(t + p.phase) * 3;
+          ctx.globalAlpha = 0.06;
+          ctx.strokeStyle = "#e4f3ff";
+          ctx.lineWidth = 0.65;
+          ctx.moveTo(p.x, p.y);
+          ctx.quadraticCurveTo(p.x + 20, p.y - 3, p.x + 55 * p.s, p.y);
+          ctx.stroke();
+        } else if (mode === "snow") {
+          p.y += dt * 25 * p.s;
+          p.x += dt * (Math.sin(t / 2 + p.phase) * 10 - 15 * wind);
+          ctx.globalAlpha = 0.35 + p.s * 0.3;
+          ctx.fillStyle = "#eef8ff";
           ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
           ctx.fill();
         } else {
+          p.y += dt * 570 * p.s;
+          p.x -= dt * 85 * wind;
+          ctx.globalAlpha = 0.14 + p.s * 0.16;
+          ctx.strokeStyle = "#d6edff";
+          ctx.lineWidth = 0.65;
           ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x - 4, p.y + 18 * p.s);
+          ctx.lineTo(p.x + wind * 3, p.y - 18 * p.s);
           ctx.stroke();
+        }
+        if (p.y > canvas.height + 30) p.y = -30;
+        if (p.y < -35) p.y = canvas.height + 25;
+        if (p.x > canvas.width + 60) p.x = -60;
+        if (p.x < -65) p.x = canvas.width + 60;
+      }
+      ctx.globalAlpha = 1;
+      if (night && !precipitation) {
+        const phase = t % 37;
+        if (phase > 27 && phase < 28.5) {
+          const progress = (phase - 27) / 1.5,
+            x = canvas.width * (0.2 + 0.5 * progress),
+            y = 35 + progress * 150;
+          ctx.globalAlpha = Math.sin(progress * Math.PI) * 0.65;
+          const streak = ctx.createLinearGradient(x - 60, y - 22, x, y);
+          streak.addColorStop(0, "transparent");
+          streak.addColorStop(1, "#ecf7ff");
+          ctx.strokeStyle = streak;
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(x - 60, y - 22);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
         }
       }
       this._raf = requestAnimationFrame(frame);
@@ -816,11 +898,6 @@ class AtmosphereCard extends HTMLElement {
       this._fetch();
       return;
     }
-    if (action === "radar-zoom") {
-      this._radarZoom = clamp(this._radarZoom + Number(value), 1, 6);
-      this._zoomRadar();
-      return;
-    }
     if (action === "motion") {
       this._paused = !this._paused;
       this._render();
@@ -832,18 +909,7 @@ class AtmosphereCard extends HTMLElement {
       return;
     }
     if (action === "close") {
-      clearInterval(this._radarTimer);
       this.shadowRoot.querySelector("dialog").close();
-      return;
-    }
-    if (action === "radar-play") {
-      this._radarPlaying = !this._radarPlaying;
-      this._startRadar();
-      return;
-    }
-    if (action === "radar-frame") {
-      this._radarFrame = Number(value);
-      this._paintRadar();
       return;
     }
     if (action === "map") {
@@ -853,7 +919,6 @@ class AtmosphereCard extends HTMLElement {
     this._openDetail(action === "detail" ? value : action, value);
   }
   _openDetail(type, value) {
-    clearInterval(this._radarTimer);
     const d = this._data,
       c = d.current,
       t = this._t.bind(this);
@@ -861,7 +926,19 @@ class AtmosphereCard extends HTMLElement {
       content = "";
     const stats = (rows) =>
       `<dl class="detail-stats">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>`;
-    if (type === "warnings") {
+    if (type === "current") {
+      title = t("current");
+      content = `<div class="current-detail">${icon(c.condition, false, 60)}<div class="detail-temperature">${this._temp(c.temperature)}</div><p>${this._condition(c.condition)}</p></div>${stats(
+        [
+          [t("feels"), this._temp(c.apparent_temperature)],
+          [t("humidity"), num(c.humidity) + "%"],
+          [t("dew"), this._temp(c.dew_point)],
+          [t("visibility"), num(c.visibility, 1) + " km"],
+          [t("pressure"), num(c.pressure) + " hPa"],
+          [t("wind"), num(c.wind_speed) + " km/h"],
+        ],
+      )}`;
+    } else if (type === "warnings") {
       content = `<p>${t("coverage")}</p>${this._isStale() ? `<p class="error">${t("warnUnavailable")}</p>` : ""}${
         this._warnings()
           .map(
@@ -908,9 +985,9 @@ class AtmosphereCard extends HTMLElement {
           [t("gusts"), `${num(f.wind_gust_speed)} km/h`],
         ],
       )}`;
-    } else if (type === "radar") {
-      title = t("radar");
-      content = `<div class="map-switch"><button data-action="map" data-value="radar">${t("rainmap")}</button><button data-action="map" data-value="wind">${t("windmap")}</button></div><div class="radar-zoom-controls"><button data-action="radar-zoom" data-value="-0.5" aria-label="${t("zoomOut")}">−</button><button data-action="radar-zoom" data-value="0.5" aria-label="${t("zoomIn")}">+</button></div><div class="radar-stage"><div class="radar-layers"><img class="radar-base" src="${esc(radarBase)}" alt=""/><img class="radar-frame" alt="${t("radar")}"/><img class="radar-overlay" alt=""/></div><div class="radar-error" hidden>${t("mapError")}</div></div><div class="radar-controls"><button data-action="radar-play" aria-label="${t("play")}">▶ / Ⅱ</button><input class="radar-slider" type="range" min="0" max="${Math.max(0, d.radar.frames.length - 1)}" value="0" aria-label="${t("radar")}"/><time class="radar-time"></time></div><div class="radar-caption">KMI / IRM · ${esc(d.radar.unit || "mm/10min")}</div><div class="map-host"></div>`;
+    } else if (type === "radar" || type === "map") {
+      title = t(type === "map" && value === "wind" ? "windmap" : "radar");
+      content = `<div class="map-switch" role="group" aria-label="${t("details")}"><button data-action="map" data-value="radar">${t("radar")}</button><button data-action="map" data-value="rain">${t("rain")} · ${t("forecast")}</button><button data-action="map" data-value="wind">${t("windmap")}</button></div><div class="map-host"></div>`;
     } else if (type === "wind") {
       content = `<div class="detail-temperature">${num(c.wind_speed)}<span> km/h</span></div>${stats(
         [
@@ -953,7 +1030,7 @@ class AtmosphereCard extends HTMLElement {
     } else if (type === "rain") {
       content = `<div class="detail-temperature">${num(d.daily[0]?.precipitation, 1)}<span> mm</span></div><p>${t("today")}</p>${this._hourChart(d.hourly.filter((h) => new Date(h.datetime) > new Date()).slice(0, 24), "precipitation")}<button class="full-button" data-action="detail" data-value="radar">${t("radar")} ↗</button>`;
     } else if (type === "source") {
-      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend." : "Wind maps load from Windy on request. Sun and moon information is calculated locally."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.1.0 ↗</a>`;
+      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend." : "Wind maps load from Windy on request. Sun and moon information is calculated locally."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.2.0 ↗</a>`;
     } else {
       const map = {
           feels: [c.apparent_temperature, "°C"],
@@ -977,120 +1054,54 @@ class AtmosphereCard extends HTMLElement {
     }
     const dialog = this.shadowRoot.querySelector("dialog");
     dialog.querySelector(".dialog-inner").innerHTML =
-      `<div class="dialog-header"><h2 id="detail-title">${esc(title)}</h2><button class="close" data-action="close" aria-label="${t("close")}">×</button></div>${content}`;
+      `<div class="dialog-header"><h2 id="detail-title">${esc(title)}</h2><button class="close" data-action="close" aria-label="${t("close")}">${glyph("close", 20)}</button></div>${content}`;
     if (!dialog.open) dialog.showModal();
     if (type === "moon") this._drawMoon(dialog.querySelector(".moon"));
-    if (type === "radar") {
-      if (!d.radar.frames.length) {
-        dialog.querySelector(".radar-stage").textContent = t("mapError");
-        dialog.querySelector(".radar-controls").remove();
-        return;
-      }
-      const frames = d.radar.frames;
-      this._radarFrame = Math.max(
-        0,
-        frames.findIndex((f) => new Date(f.time) >= new Date()) - 1,
-      );
-      dialog.querySelector(".radar-overlay").src = this._safeMedia(
-        d.radar.overlay,
-      );
-      dialog.querySelector(".radar-slider").oninput = (e) => {
-        this._radarPlaying = false;
-        clearInterval(this._radarTimer);
-        this._radarFrame = Number(e.target.value);
-        this._paintRadar();
-      };
-      this._zoomRadar();
-      this._radarPlaying ??= !this._reduced.matches;
-      this._startRadar();
-    }
-  }
-  _safeMedia(value) {
-    try {
-      const u = new URL(value);
-      return u.protocol === "https:" &&
-        (u.hostname === "app.meteo.be" || u.hostname === "cdn.meteo.be")
-        ? u.href
-        : "";
-    } catch {
-      return "";
-    }
-  }
-  _paintRadar() {
-    const dialog = this.shadowRoot.querySelector("dialog"),
-      frame = this._data.radar.frames[this._radarFrame];
-    if (!frame || !dialog.open) return;
-    const img = dialog.querySelector(".radar-frame");
-    if (!img) return;
-    img.onerror = () => {
-      dialog.querySelector(".radar-error").hidden = false;
-    };
-    img.onload = () => {
-      dialog.querySelector(".radar-error").hidden = true;
-    };
-    img.src = this._safeMedia(frame.url);
-    dialog.querySelector(".radar-time").textContent = this._time(frame.time);
-    dialog.querySelector(".radar-slider").value = this._radarFrame;
-  }
-  _startRadar() {
-    clearInterval(this._radarTimer);
-    const play = this.shadowRoot.querySelector('[data-action="radar-play"]');
-    if (play) {
-      play.textContent = this._radarPlaying ? "Ⅱ" : "▶";
-      play.setAttribute(
-        "aria-label",
-        this._t(this._radarPlaying ? "pause" : "play"),
-      );
-    }
-    this._paintRadar();
-    if (this._radarPlaying && this._data.radar.frames.length > 0)
-      this._radarTimer = setInterval(() => {
-        if (document.hidden || !this.shadowRoot.querySelector("dialog").open)
-          return;
-        this._radarFrame =
-          (this._radarFrame + 1) % this._data.radar.frames.length;
-        this._paintRadar();
-      }, 900);
+    dialog.classList.toggle("map-dialog", type === "radar" || type === "map");
+    if (type === "radar" || type === "map")
+      this._showMap(type === "map" ? value : "radar");
   }
   _showMap(layer) {
-    let host = this.shadowRoot.querySelector("dialog .map-host");
-    if (!host) return;
-    const d = this._data,
+    const dialog = this.shadowRoot.querySelector("dialog");
+    if (!dialog.classList.contains("map-dialog"))
+      return this._openDetail("map", layer);
+    const host = dialog.querySelector(".map-host"),
+      d = this._data,
       url = new URL("https://embed.windy.com/embed.html");
     url.search = new URLSearchParams({
       type: "map",
       location: "coordinates",
       metricWind: "km/h",
       metricTemp: "°C",
-      zoom: layer === "radar" ? "10" : "9",
+      metricRain: "mm",
+      zoom: "11",
       overlay: layer,
       product: "ecmwf",
       level: "surface",
-      lat: d.latitude.toFixed(2),
-      lon: d.longitude.toFixed(2),
-      detailLat: d.latitude.toFixed(2),
-      detailLon: d.longitude.toFixed(2),
+      lat: d.latitude.toFixed(4),
+      lon: d.longitude.toFixed(4),
+      detailLat: d.latitude.toFixed(4),
+      detailLon: d.longitude.toFixed(4),
       marker: "true",
       calendar: "now",
+      message: "false",
     }).toString();
-    host.innerHTML = `<iframe title="${this._t(layer === "wind" ? "windmap" : "rainmap")}" src="${esc(url.href)}" referrerpolicy="no-referrer" loading="lazy" allowfullscreen></iframe><a href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">Windy ↗</a>`;
-    host.scrollIntoView({
-      block: "nearest",
-      behavior: this._reduced.matches ? "instant" : "smooth",
-    });
-  }
-  _zoomRadar() {
-    const layers = this.shadowRoot.querySelector(".radar-layers");
-    if (!layers) return;
-    const center = this._data.radar.center || [0.5, 0.5];
-    const x = valid(center[0]) ? clamp(center[0], 0, 1) : 0.5,
-      y = valid(center[1]) ? clamp(center[1], 0, 1) : 0.5;
-    layers.style.transform = `translate(${50 - x * 100}%, ${50 - y * 100}%) scale(${this._radarZoom})`;
-    layers.style.transformOrigin = `${x * 100}% ${y * 100}%`;
+    dialog.querySelector("#detail-title").textContent = this._t(
+      layer === "wind" ? "windmap" : layer === "rain" ? "rain" : "radar",
+    );
+    dialog
+      .querySelectorAll('[data-action="map"]')
+      .forEach((button) =>
+        button.setAttribute(
+          "aria-pressed",
+          String(button.dataset.value === layer),
+        ),
+      );
+    host.innerHTML = `<iframe title="${this._t(layer === "wind" ? "windmap" : "rainmap")}" src="${esc(url.href)}" referrerpolicy="no-referrer" allowfullscreen></iframe><a href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">Windy ${glyph("arrow", 13)}</a>`;
   }
   _applyVisibility() {
     const root = this.shadowRoot,
-      show = this._config.show;
+      show = this._config.show || defaultSections;
     root
       .querySelectorAll("[data-section]")
       .forEach(
@@ -1153,8 +1164,9 @@ class AtmosphereCard extends HTMLElement {
     if (trackers.length === 1 && this._trackerFresh(trackers[0]))
       return this._useTracker(trackers[0].entity_id);
     const dialog = this.shadowRoot.querySelector("dialog");
+    dialog.classList.remove("map-dialog");
     dialog.querySelector(".dialog-inner").innerHTML =
-      `<div class="dialog-header"><h2 id="detail-title">${this._t("chooseDevice")}</h2><button class="close" data-action="close" aria-label="${this._t("close")}">×</button></div>${trackers.map((e) => `<button class="tracker-choice" data-action="use-tracker" data-value="${esc(e.entity_id)}" ${this._trackerFresh(e) ? "" : "disabled"}><strong>${esc(e.attributes.friendly_name || e.entity_id)}</strong><span>${this._t("reported")} ${this._time(e.last_updated)} · ±${num(e.attributes.gps_accuracy)} m</span></button>`).join("")}<p>${this._t("staleLocation")}</p>`;
+      `<div class="dialog-header"><h2 id="detail-title">${this._t("chooseDevice")}</h2><button class="close" data-action="close" aria-label="${this._t("close")}">${glyph("close", 20)}</button></div>${trackers.map((e) => `<button class="tracker-choice" data-action="use-tracker" data-value="${esc(e.entity_id)}" ${this._trackerFresh(e) ? "" : "disabled"}><strong>${esc(e.attributes.friendly_name || e.entity_id)}</strong><span>${this._t("reported")} ${this._time(e.last_updated)} · ±${num(e.attributes.gps_accuracy)} m</span></button>`).join("")}<p>${this._t("staleLocation")}</p>`;
     if (!dialog.open) dialog.showModal();
   }
   async _useTracker(entityId) {
@@ -1251,23 +1263,19 @@ class AtmosphereCard extends HTMLElement {
           : field === "wind_speed"
             ? " km/h"
             : " mm";
-    return `<div class="detail-chart"><svg viewBox="0 0 500 130" role="img" aria-label="${this._t(field === "temperature" ? "temperature" : field === "wind_speed" ? "wind" : "rain")}"><path d="M10 110H490M10 55H490" stroke="white" stroke-opacity=".13"/><polyline points="${hours
+    const start = new Date(hours[0].datetime).getTime(),
+      duration = Math.max(1, new Date(hours.at(-1).datetime) - start);
+    const x = (h) => 12 + ((new Date(h.datetime) - start) / duration) * 476;
+    const points = hours
       .filter((h) => valid(h[field]))
-      .map(
-        (h, i) =>
-          `${10 + (i * 480) / Math.max(1, hours.length - 1)},${105 - ((h[field] - min) / range) * 85}`,
-      )
-      .join(
-        " ",
-      )}" fill="none" stroke="#9cdef1" stroke-width="3" stroke-linejoin="round"/>${hours
-      .filter((h, i) => i % Math.max(1, Math.floor(hours.length / 5)) === 0)
-      .map(
-        (h) =>
-          `<text x="${10 + (hours.indexOf(h) * 480) / Math.max(1, hours.length - 1)}" y="126" fill="#cadbea" font-size="11" text-anchor="middle">${this._time(h.datetime, { minute: undefined })}</text>`,
-      )
-      .join(
-        "",
-      )}</svg><div class="chart-times"><span>${num(min, field === "precipitation" ? 1 : 0)}${unit}</span><span>${num(max, field === "precipitation" ? 1 : 0)}${unit}</span></div></div>`;
+      .map((h) => [x(h), 100 - ((h[field] - min) / range) * 75])
+      .filter((p, i, a) => !i || p[0] > a[i - 1][0]);
+    const curve = smoothPath(points),
+      area = curve + `L${points.at(-1)[0]},110L${points[0][0]},110Z`;
+    const ticks = hours.filter(
+      (h, i) => i % Math.max(1, Math.floor(hours.length / 5)) === 0,
+    );
+    return `<div class="detail-chart"><svg viewBox="0 0 500 140" role="img" aria-label="${this._t(field === "temperature" ? "temperature" : field === "wind_speed" ? "wind" : "rain")}"><defs><linearGradient id="forecast-fill" x2="0" y2="1"><stop stop-color="#a5e8f3" stop-opacity=".3"/><stop offset="1" stop-color="#a5e8f3" stop-opacity="0"/></linearGradient></defs><path d="M12 110H488M12 65H488M12 20H488" stroke="white" stroke-opacity=".1"/><path d="${area}" fill="url(#forecast-fill)"/><path data-forecast-curve d="${curve}" fill="none" stroke="#aeeaf3" stroke-width="3" stroke-linecap="round"/>${points.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.6" fill="#e4faff" stroke="#3b6888" stroke-width="1.5"/>`).join("")}${ticks.map((h) => `<text x="${x(h)}" y="133" fill="#cadbea" font-size="11" text-anchor="middle">${this._time(h.datetime, { minute: undefined })}</text>`).join("")}</svg><div class="chart-times"><span>${num(min, field === "precipitation" ? 1 : 0)}${unit}</span><span>${num(max, field === "precipitation" ? 1 : 0)}${unit}</span></div></div>`;
   }
 }
 
@@ -1290,7 +1298,7 @@ class AtmosphereCardEditor extends HTMLElement {
       (e) =>
         e.entity_id.startsWith("weather.") && e.attributes.atmosphere_entry_id,
     );
-    this.shadowRoot.innerHTML = `<style>.section-toggle{display:flex;gap:8px;margin:8px 0}fieldset{border:1px solid var(--divider-color);border-radius:10px}label{display:grid;gap:8px;margin:16px 0}select,input{padding:12px;font:inherit;color:var(--primary-text-color);background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:8px}</style><label>Atmosphere location<select id="entity">${entities.map((e) => `<option value="${esc(e.entity_id)}" ${this._config.entity === e.entity_id ? "selected" : ""}>${esc(e.attributes.friendly_name || e.entity_id)}</option>`).join("")}</select></label><label>Name<input id="name" value="${esc(this._config.name || "")}"/></label><label>Card language<select id="language"><option value="auto">Location language</option><option value="nl">Nederlands</option><option value="en">English</option></select></label><fieldset><legend>Visible panels</legend>${sections.map((key) => `<label class="section-toggle"><input type="checkbox" data-section-choice="${key}" ${!Array.isArray(this._config.show) || this._config.show.includes(key) ? "checked" : ""}/>${words.en[key] || (key === "sun" ? "Sunrise and sunset" : key)}</label>`).join("")}</fieldset>`;
+    this.shadowRoot.innerHTML = `<style>.section-toggle{display:flex;gap:8px;margin:8px 0}fieldset{border:1px solid var(--divider-color);border-radius:10px}label{display:grid;gap:8px;margin:16px 0}select,input{padding:12px;font:inherit;color:var(--primary-text-color);background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:8px}</style><label>Atmosphere location<select id="entity">${entities.map((e) => `<option value="${esc(e.entity_id)}" ${this._config.entity === e.entity_id ? "selected" : ""}>${esc(e.attributes.friendly_name || e.entity_id)}</option>`).join("")}</select></label><label>Name<input id="name" value="${esc(this._config.name || "")}"/></label><label>Card language<select id="language"><option value="auto">Location language</option><option value="nl">Nederlands</option><option value="en">English</option></select></label><fieldset><legend>Visible panels</legend>${sections.map((key) => `<label class="section-toggle"><input type="checkbox" data-section-choice="${key}" ${(this._config.show || defaultSections).includes(key) ? "checked" : ""}/>${words.en[key] || (key === "sun" ? "Sunrise and sunset" : key)}</label>`).join("")}</fieldset>`;
     this.shadowRoot.querySelectorAll("[data-section-choice]").forEach((el) =>
       el.addEventListener("change", () => {
         const show = [

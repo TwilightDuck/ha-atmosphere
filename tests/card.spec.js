@@ -36,9 +36,9 @@ test("live provider sample renders responsive forecasts and every detail interac
     ".warning",
     ".day",
     ".hour",
-    ".metrics .panel",
+    ".metrics .panel:visible",
     ".moon-panel",
-    ".small-metrics .panel",
+    ".condition",
   ]) {
     await page.locator(selector).first().click();
     await expect(page.locator("dialog")).toBeVisible();
@@ -52,8 +52,9 @@ test("live provider sample renders responsive forecasts and every detail interac
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
-    const panels = page.locator(".metrics .panel");
-    for (let i = 0; i < 6; i++) await expect(panels.nth(i)).toBeVisible();
+    const panels = page.locator(".metrics .panel:visible");
+    await expect(panels).toHaveCount(5);
+    for (let i = 0; i < 5; i++) await expect(panels.nth(i)).toBeVisible();
     await page.setViewportSize({
       width,
       height: await page.evaluate(() => document.documentElement.scrollHeight),
@@ -80,39 +81,38 @@ test("warning outage never claims there are no warnings", async ({ page }) => {
   );
 });
 
-test("radar scrubs provider frames and opens maps only on request", async ({
+test("interactive radar and wind load only on request and switch directly", async ({
   page,
 }) => {
   const maps = [];
   page.on("request", (r) => {
     if (r.url().includes("embed.windy.com")) maps.push(r.url());
   });
-  await page.route("https://**.meteo.be/**", (r) =>
-    r.fulfill({
-      contentType: "image/svg+xml",
-      body: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="#466b84"/></svg>',
-    }),
+  await page.route("https://embed.windy.com/**", (r) =>
+    r.fulfill({ body: "<h1>Weather map</h1>" }),
   );
   await open(page);
   expect(maps).toEqual([]);
   await page.getByRole("button", { name: "Regenkaart", exact: false }).click();
-  await expect(page.locator(".radar-frame")).toBeVisible();
-  await expect(page.locator(".radar-base")).toBeVisible();
-  await expect(page.locator(".radar-caption")).toContainText("mm/10min");
-  await page.locator(".radar-slider").fill("10");
-  await expect(page.locator(".radar-time")).not.toBeEmpty();
-  await page.keyboard.press("Escape");
-  await expect(page.locator("dialog")).not.toBeVisible();
-  await page.getByRole("button", { name: "Regenkaart", exact: false }).click();
-  await page.route("https://embed.windy.com/**", (r) =>
-    r.fulfill({ body: "<h1>Windy map endpoint</h1>" }),
+  await expect(page.locator("dialog iframe")).toHaveAttribute(
+    "src",
+    /overlay=radar/,
   );
   await page.getByRole("button", { name: "Windkaart", exact: true }).click();
-  await expect(page.locator(".map-host iframe")).toHaveAttribute(
+  await expect(page.locator("dialog iframe")).toHaveAttribute(
     "src",
     /overlay=wind/,
   );
-  await expect.poll(() => maps.length).toBeGreaterThan(0);
+  await page
+    .getByRole("button", { name: "Neerslag · Verwachting", exact: true })
+    .click();
+  await expect(page.locator("dialog iframe")).toHaveAttribute(
+    "src",
+    /overlay=rain/,
+  );
+  await page.keyboard.press("Escape");
+  await expect(page.locator("dialog")).not.toBeVisible();
+  await expect(page.locator("dialog iframe")).toHaveCount(0);
 });
 
 test("reduced motion, missing optional sources, empty radar and weather changes are safe", async ({
@@ -132,9 +132,7 @@ test("reduced motion, missing optional sources, empty radar and weather changes 
   }));
   await expect(page.locator(".atmosphere")).toHaveClass(/paused/);
   await page.getByRole("button", { name: "Regenkaart", exact: false }).click();
-  await expect(page.locator("dialog")).toContainText(
-    "Radarbeeld niet beschikbaar",
-  );
+  await expect(page.locator("dialog iframe")).toBeVisible();
   await page.keyboard.press("Escape");
   await page.locator(".moon-panel").click();
   await expect(page.locator(".detail-moon")).toBeVisible();
@@ -220,7 +218,14 @@ test("Companion fallback chooses only the signed-in viewer GPS tracker", async (
         }),
         "person.b": state("person.b", {
           user_id: "viewer-b",
-          device_trackers: ["device_tracker.phone_b"],
+          device_trackers: ["device_tracker.phone_b", "device_tracker.phone_c"],
+        }),
+        "device_tracker.phone_c": state("device_tracker.phone_c", {
+          source_type: "gps",
+          latitude: 51.2,
+          longitude: 4.9,
+          gps_accuracy: 15,
+          friendly_name: "Other device",
         }),
         "device_tracker.phone_a": state("device_tracker.phone_a", {
           source_type: "gps",
@@ -249,9 +254,16 @@ test("Companion fallback chooses only the signed-in viewer GPS tracker", async (
       },
     };
   }, sample);
+  await page.route("https://embed.windy.com/**", (r) =>
+    r.fulfill({ body: "Map" }),
+  );
+  await page.getByRole("button", { name: "Regenkaart", exact: false }).click();
+  await page.getByRole("button", { name: "Sluiten", exact: true }).click();
   await page
     .getByRole("button", { name: "Huidige locatie", exact: true })
     .click();
+  await expect(page.locator("dialog")).not.toHaveClass(/map-dialog/);
+  await page.getByRole("button", { name: /Phone B/ }).click();
   await expect(
     page.getByRole("heading", { name: "Phone B location", exact: true }),
   ).toBeVisible();
@@ -274,12 +286,10 @@ test("visible panels reflow in a compact card and radar zooms around the locatio
     ),
   ).toBe(true);
   await page.evaluate(() =>
-    document
-      .querySelector("atmosphere-card")
-      .setConfig({
-        entity: "weather.malle_weather",
-        show: ["hourly", "wind", "radar"],
-      }),
+    document.querySelector("atmosphere-card").setConfig({
+      entity: "weather.malle_weather",
+      show: ["hourly", "wind", "radar"],
+    }),
   );
   await expect(page.locator(".hero")).not.toBeVisible();
   await expect(page.locator(".daily")).not.toBeVisible();
@@ -287,14 +297,8 @@ test("visible panels reflow in a compact card and radar zooms around the locatio
   await expect(page.locator(".hourly")).toBeVisible();
   await expect(page.locator("[data-section=wind]")).toBeVisible();
   await page.getByRole("button", { name: "Regenkaart", exact: false }).click();
-  const before = await page
-    .locator(".radar-layers")
-    .evaluate((el) => getComputedStyle(el).transform);
-  await page.getByRole("button", { name: "Inzoomen", exact: true }).click();
-  const after = await page
-    .locator(".radar-layers")
-    .evaluate((el) => getComputedStyle(el).transform);
-  expect(before).not.toBe(after);
+  await expect(page.locator("dialog iframe")).toHaveAttribute("src", /zoom=11/);
+  await expect(page.locator(".radar-layers")).toHaveCount(0);
 });
 
 test("sky motion freezes while hidden and resumes without elapsed-time catchup", async ({
@@ -338,4 +342,120 @@ test("sky motion freezes while hidden and resumes without elapsed-time catchup",
       .locator(".clouds.far")
       .evaluate((el) => getComputedStyle(el).transform),
   ).not.toBe(before);
+});
+
+test("detailed maps open directly and graph geometry has continuous curves", async ({
+  page,
+}) => {
+  await open(page, (d) => ({
+    ...d,
+    hourly: d.hourly.map((h, i) => ({
+      ...h,
+      temperature: [5, 18, 5, 18, 5, 18][i % 6],
+    })),
+  }));
+  await page.locator(".hour").first().click();
+  const smooth = await page
+    .locator("dialog .detail-chart svg")
+    .evaluate((svg) => {
+      const curve = svg.querySelector("path[data-forecast-curve],polyline");
+      if (!curve) return false;
+      const length = curve.getTotalLength();
+      let previous = null,
+        maxTurn = 0;
+      for (let t = 1; t < length - 1; t += 1) {
+        const a = curve.getPointAtLength(t - 1),
+          b = curve.getPointAtLength(t + 1);
+        const angle = Math.atan2(b.y - a.y, b.x - a.x);
+        if (previous !== null)
+          maxTurn = Math.max(maxTurn, Math.abs(angle - previous));
+        previous = angle;
+      }
+      return maxTurn < 0.65;
+    });
+  expect(smooth).toBe(true);
+  await page.getByRole("button", { name: "Sluiten", exact: true }).click();
+  await page.route("https://embed.windy.com/**", (r) =>
+    r.fulfill({ body: "<h1>Weather map</h1>" }),
+  );
+  await page.getByRole("button", { name: "Regenkaart", exact: false }).click();
+  await expect(page.locator("dialog iframe")).toBeVisible();
+  await expect(page.locator("dialog iframe")).toHaveAttribute("src", /zoom=11/);
+});
+
+test("SVG controls are centered and sparse metrics are combined in current conditions", async ({
+  page,
+}) => {
+  await open(page);
+  await expect(page.locator("[data-section=humidity]")).not.toBeVisible();
+  await expect(page.locator("[data-section=visibility]")).not.toBeVisible();
+  await expect(page.locator("[data-section=pressure]")).not.toBeVisible();
+  await expect(page.locator("[data-section=feels]")).not.toBeVisible();
+  for (const width of [1440, 390, 240]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const offsets = await page
+      .locator(".segmented button,.location-pin,.motion")
+      .evaluateAll((buttons) =>
+        buttons.map((button) => {
+          const b = button.getBoundingClientRect(),
+            s = button.querySelector("svg")?.getBoundingClientRect();
+          return s
+            ? Math.max(
+                Math.abs(b.x + b.width / 2 - s.x - s.width / 2),
+                Math.abs(b.y + b.height / 2 - s.y - s.height / 2),
+              )
+            : Infinity;
+        }),
+      );
+    expect(Math.max(...offsets)).toBeLessThan(0.6);
+  }
+  await page.locator(".condition").click();
+  await expect(page.locator("dialog")).toContainText("Luchtvochtigheid");
+  await expect(page.locator("dialog")).toContainText("Luchtdruk");
+  const offset = await page.locator(".close").evaluate((button) => {
+    const b = button.getBoundingClientRect(),
+      s = button.querySelector("svg").getBoundingClientRect();
+    return Math.abs(b.y + b.height / 2 - s.y - s.height / 2);
+  });
+  expect(offset).toBeLessThan(0.6);
+});
+
+test("condition-specific skies render day, night, rain and snow effects", async ({
+  page,
+}) => {
+  await page.clock.install();
+  for (const [condition, night] of [
+    ["sunny", false],
+    ["clear-night", true],
+    ["rainy", false],
+    ["snowy", false],
+  ]) {
+    await open(page, (d) => ({
+      ...d,
+      current: { ...d.current, condition },
+      sun: {
+        ...d.sun,
+        sunrise: new Date(
+          Date.now() + (night ? 3600000 : -3600000),
+        ).toISOString(),
+        sunset: new Date(Date.now() + 7200000).toISOString(),
+      },
+    }));
+    await page.clock.runFor(5000);
+    const painted = await page.locator(".precipitation").evaluate((canvas) => {
+      const pixels = canvas
+        .getContext("2d")
+        .getImageData(0, 0, canvas.width, canvas.height).data;
+      return pixels.some((v, i) => i % 4 === 3 && v > 0);
+    });
+    expect(painted).toBe(true);
+    await expect(page.locator(".atmosphere")).toHaveAttribute(
+      "data-night",
+      String(night),
+    );
+    await page.screenshot({
+      path: `screenshots/sky-${condition}.png`,
+      fullPage: false,
+    });
+  }
 });
