@@ -53,8 +53,14 @@ test("live provider sample renders responsive forecasts and every detail interac
       ),
     ).toBe(true);
     const panels = page.locator(".metrics .panel:visible");
-    await expect(panels).toHaveCount(5);
-    for (let i = 0; i < 5; i++) await expect(panels.nth(i)).toBeVisible();
+    await expect(panels).toHaveCount(4);
+    for (let i = 0; i < 4; i++) await expect(panels.nth(i)).toBeVisible();
+    const headings = await panels
+      .locator("h2")
+      .evaluateAll((nodes) =>
+        nodes.slice(0, 2).map((node) => node.getBoundingClientRect().top),
+      );
+    expect(Math.abs(headings[0] - headings[1])).toBeLessThan(1);
     await page.setViewportSize({
       width,
       height: await page.evaluate(() => document.documentElement.scrollHeight),
@@ -304,18 +310,23 @@ test("visible panels reflow in a compact card and radar zooms around the locatio
 test("sky motion freezes while hidden and resumes without elapsed-time catchup", async ({
   page,
 }) => {
-  await page.clock.install();
+  const time = Date.now();
+  await page.clock.install({ time: new Date(time) });
+  await page.clock.pauseAt(new Date(time + 1000));
   await open(page);
   await page.clock.runFor(5000);
-  const before = await page
-    .locator(".clouds.far")
-    .evaluate((el) => getComputedStyle(el).transform);
-  await page.evaluate(() => {
+  // Capture and hide atomically so a queued RAF cannot run between observations.
+  const before = await page.evaluate(() => {
+    const cloud = document
+      .querySelector("atmosphere-card")
+      .shadowRoot.querySelector(".clouds.far");
+    const snapshot = getComputedStyle(cloud).transform;
     Object.defineProperty(document, "hidden", {
       configurable: true,
       get: () => true,
     });
     document.dispatchEvent(new Event("visibilitychange"));
+    return snapshot;
   });
   await page.clock.fastForward(10 * 60000);
   expect(
@@ -467,25 +478,38 @@ test("condition-specific skies render day, night, rain and snow effects", async 
   }
 });
 
-test("lunar surface renders with the correct illuminated hemisphere across phases", async ({ page }) => {
+test("lunar surface renders with the correct illuminated hemisphere across phases", async ({
+  page,
+}) => {
   // Fixed astronomical dates cover both terminator directions and the two extremes.
   for (const [date, phase] of [
-    ["2026-10-18", "waxing"], ["2026-10-26", "full"],
-    ["2026-11-01", "waning"], ["2026-11-09", "new"],
+    ["2026-10-18", "waxing"],
+    ["2026-10-26", "full"],
+    ["2026-11-01", "waning"],
+    ["2026-11-09", "new"],
   ]) {
     await page.clock.install({ time: new Date(`${date}T12:00:00Z`) });
     await open(page);
     await page.locator(".moon-panel").click();
     const moon = page.locator(".detail-moon");
-    await expect.poll(() => moon.evaluate(canvas => {
-      const { data } = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
-      return data.some((value, index) => index % 4 === 3 && value > 0);
-    })).toBe(true);
-    const brightness = await moon.evaluate(canvas => {
-      const w = canvas.width, pixels = canvas.getContext("2d").getImageData(0, 0, w, w).data;
-      let left = 0, right = 0, count = 0;
-      for (let y = w * .25; y < w * .75; y++) {
-        for (let x = w * .25; x < w * .5; x++) {
+    await expect
+      .poll(() =>
+        moon.evaluate((canvas) => {
+          const { data } = canvas
+            .getContext("2d")
+            .getImageData(0, 0, canvas.width, canvas.height);
+          return data.some((value, index) => index % 4 === 3 && value > 0);
+        }),
+      )
+      .toBe(true);
+    const brightness = await moon.evaluate((canvas) => {
+      const w = canvas.width,
+        pixels = canvas.getContext("2d").getImageData(0, 0, w, w).data;
+      let left = 0,
+        right = 0,
+        count = 0;
+      for (let y = w * 0.25; y < w * 0.75; y++) {
+        for (let x = w * 0.25; x < w * 0.5; x++) {
           left += pixels[(y * w + x) * 4];
           right += pixels[(y * w + w - 1 - x) * 4];
           count++;
@@ -493,13 +517,56 @@ test("lunar surface renders with the correct illuminated hemisphere across phase
       }
       return { left: left / count, right: right / count };
     });
-    if (phase === "waxing") expect(brightness.right).toBeGreaterThan(brightness.left * 5);
-    if (phase === "waning") expect(brightness.left).toBeGreaterThan(brightness.right * 5);
+    if (phase === "waxing")
+      expect(brightness.right).toBeGreaterThan(brightness.left * 5);
+    if (phase === "waning")
+      expect(brightness.left).toBeGreaterThan(brightness.right * 5);
     if (phase === "full") {
       expect(Math.min(brightness.left, brightness.right)).toBeGreaterThan(70);
-      await page.locator("dialog").screenshot({ path: "screenshots/moon-realistic.png" });
+      await page
+        .locator("dialog")
+        .screenshot({ path: "screenshots/moon-realistic.png" });
     }
-    if (phase === "new") expect(Math.max(brightness.left, brightness.right)).toBeLessThan(12);
+    if (phase === "new")
+      expect(Math.max(brightness.left, brightness.right)).toBeLessThan(12);
     await page.clock.resume();
   }
+});
+
+test("detail panels preserve focus and motion preferences across pointer and keyboard use", async ({
+  page,
+}) => {
+  await open(page);
+  const trigger = page.locator(".condition"),
+    dialog = page.locator("dialog");
+  await trigger.click();
+  await expect(dialog).toBeVisible();
+  await expect(page.locator(".close")).toBeFocused();
+  expect(
+    await dialog.evaluate((el) =>
+      parseFloat(getComputedStyle(el).transitionDuration),
+    ),
+  ).toBeGreaterThan(0);
+  await page.locator(".close").click();
+  await expect(dialog).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  await trigger.press("Enter");
+  await expect(dialog).toBeVisible();
+  expect(
+    await dialog.evaluate((el) => getComputedStyle(el).transitionDuration),
+  ).toBe("0s");
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.locator(".moon-panel").click();
+  await expect(dialog).toBeVisible();
+  expect(
+    await dialog.evaluate(
+      (el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).isIdentity,
+    ),
+  ).toBe(true);
+  await page.keyboard.press("Escape");
+  await page.locator(".rain-total").click();
+  await expect(dialog).toContainText("mm");
 });

@@ -1,0 +1,106 @@
+:host {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+/* Feedback: only the small controls compress; reading surfaces stay still. */
+.location-pin,
+.motion,
+.home-location,
+.close,
+.segmented button,
+.map-switch button,
+.full-button {
+  transition: transform 160ms var(--ease-out);
+}
+:is(
+    .location-pin,
+    .motion,
+    .home-location,
+    .close,
+    .segmented button,
+    .map-switch button,
+    .full-button
+  ):active:not(:focus-visible) {
+  transform: scale(0.96);
+  transition-duration: 100ms;
+}
+/* Spatial continuity: content-sized panels arrive together with their backdrop. */
+dialog {
+  opacity: 0;
+  transform: translateY(8px) scale(0.97);
+  transition:
+    opacity 140ms var(--ease-out),
+    transform 140ms var(--ease-out),
+    display 140ms,
+    overlay 140ms;
+  transition-behavior: allow-discrete;
+}
+dialog[open]:not([data-closing]) {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition-duration: 220ms;
+}
+dialog::backdrop {
+  opacity: 0;
+  transition:
+    opacity 140ms var(--ease-out),
+    display 140ms,
+    overlay 140ms;
+  transition-behavior: allow-discrete;
+}
+dialog[open]:not([data-closing])::backdrop {
+  opacity: 1;
+  transition-duration: 220ms;
+}
+@starting-style {
+  dialog[open]:not([data-closing]) {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  dialog[open]:not([data-closing])::backdrop {
+    opacity: 0;
+  }
+}
+/* Keyboard actions are immediate; this also preserves rapid keyboard navigation. */
+dialog[data-instant="true"],
+dialog[data-instant="true"]::backdrop {
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .location-pin,
+  .motion,
+  .home-location,
+  .close,
+  .segmented button,
+  .map-switch button,
+  .full-button {
+    transition: none;
+  }
+  :is(
+      .location-pin,
+      .motion,
+      .home-location,
+      .close,
+      .segmented button,
+      .map-switch button,
+      .full-button
+    ):active:not(:focus-visible) {
+    transform: none;
+  }
+  dialog {
+    transform: none;
+    transition-duration: 100ms;
+  }
+  dialog[open]:not([data-closing]) {
+    transform: none;
+    transition-duration: 100ms;
+  }
+  dialog::backdrop,
+  dialog[open]:not([data-closing])::backdrop {
+    transition-duration: 100ms;
+  }
+  @starting-style {
+    dialog[open]:not([data-closing]) {
+      transform: none;
+    }
+  }
+}

@@ -64,6 +64,7 @@ const words = {
     pressure: "Pressure",
     moon: "Moon",
     radar: "Rain radar",
+    rainUnavailable: "Rain forecast unavailable",
     now: "Now",
     today: "Today",
     tomorrow: "Tomorrow",
@@ -155,6 +156,7 @@ const words = {
     pressure: "Luchtdruk",
     moon: "Maan",
     radar: "Regenradar",
+    rainUnavailable: "Regenverwachting niet beschikbaar",
     now: "Nu",
     today: "Vandaag",
     tomorrow: "Morgen",
@@ -270,7 +272,8 @@ const sections = [
 ];
 
 const defaultSections = sections.filter(
-  (key) => !["feels", "humidity", "visibility", "pressure"].includes(key),
+  (key) =>
+    !["feels", "humidity", "visibility", "pressure", "rain"].includes(key),
 );
 
 class AtmosphereCard extends HTMLElement {
@@ -284,24 +287,32 @@ class AtmosphereCard extends HTMLElement {
     this.shadowRoot.innerHTML = `<style>${styles}</style><ha-card><div class="atmosphere"><div class="sky" aria-hidden="true"><div class="sun-orb"></div><div class="rays"></div><div class="stars"></div><div class="clouds far"></div><div class="clouds near"></div><div class="clouds bank"></div><canvas class="sky-moon" width="240" height="240"></canvas><canvas class="precipitation"></canvas><div class="horizon"></div></div><div class="body"></div></div></ha-card><dialog aria-labelledby="detail-title"><div class="dialog-inner"></div></dialog>`;
     this.shadowRoot.addEventListener("click", (e) => {
       const button = e.target.closest("[data-action]");
-      if (button) this._action(button.dataset.action, button.dataset.value);
+      if (button) {
+        this._keyboardAction = e.detail === 0;
+        this._action(button.dataset.action, button.dataset.value);
+      }
     });
     this.shadowRoot.querySelector("dialog").addEventListener("click", (e) => {
-      if (e.target === e.currentTarget) e.currentTarget.close();
+      if (e.target === e.currentTarget) this._closeDetail(false);
     });
+    this.shadowRoot
+      .querySelector("dialog")
+      .addEventListener("cancel", (event) => {
+        event.preventDefault();
+        this._closeDetail(true);
+      });
     this._onVisibility = () => this._animate();
     this._onMotion = () => {
       this._animate();
 
       this._render();
     };
-    this.shadowRoot
-      .querySelector("dialog")
-      .addEventListener("close", () =>
-        this.shadowRoot
-          .querySelectorAll("dialog iframe")
-          .forEach((frame) => frame.remove()),
-      );
+    this.shadowRoot.querySelector("dialog").addEventListener("close", () => {
+      const dialog = this.shadowRoot.querySelector("dialog");
+      // A queued close event must not unload a map that was just reopened.
+      if (!dialog.open)
+        dialog.querySelectorAll("iframe").forEach((frame) => frame.remove());
+    });
     this._skyTime = 0;
   }
   setConfig(config) {
@@ -473,7 +484,7 @@ class AtmosphereCard extends HTMLElement {
       );
   }
   _panel(title, content, action = title, classes = "") {
-    return `<button class="panel ${classes}" data-section="${title === "sunrise" || title === "sunset" ? "sun" : title}" data-action="detail" data-value="${esc(action)}"><h2><span aria-hidden="true">${glyph(title, 18)}</span>${this._t(title)}<span class="chevron" aria-hidden="true">${glyph("chevron", 14)}</span></h2>${content}</button>`;
+    return `<button class="panel ${classes}" data-section="${title === "sunrise" || title === "sunset" ? "sun" : title}" data-action="detail" data-value="${esc(action)}"><h2>${this._t(title)}<span class="chevron" aria-hidden="true">${glyph("chevron", 14)}</span></h2>${content}</button>`;
   }
   _render() {
     if (!this.isConnected) return;
@@ -573,16 +584,20 @@ class AtmosphereCard extends HTMLElement {
       (r) => (r.precipitation || 0) > 0 || r.might_rain,
     );
     body.innerHTML = `
-      <div class="toolbar"><button class="location-pin ${this._deviceCoords ? "selected" : ""}" data-action="locate" aria-label="${this._t("currentLocation")}" aria-busy="${!!this._locationBusy}" title="${this._t("currentLocation")}">${glyph("location", 20)}</button><span>${esc(this._deviceCoords ? d.name : this._config.name || d.name)}</span>${this._deviceCoords ? `<button class="home-location" data-action="home" aria-label="${this._t("homeLocation")}">${glyph("home", 22)}</button>` : ""}<button class="motion" data-action="motion" aria-label="${this._t(this._paused || this._reduced.matches ? "play" : "pause")}" aria-pressed="${!this._paused && !this._reduced.matches}">${glyph(this._paused ? "play" : "pause", 16)}</button></div>
-      <header class="hero" data-section="current"><h1>${esc(this._deviceCoords ? d.name : this._config.name || d.name)}</h1><div class="temperature">${this._temp(c.temperature)}</div><button class="condition" data-action="detail" data-value="current" aria-label="${this._t("current")}">${this._condition(condition)}${glyph("chevron", 14)}</button><div class="hero-range">${valid(c.apparent_temperature) ? `${this._t("feels")} ${this._temp(c.apparent_temperature)}<span>·</span>` : ""}${this._t("high")}:${this._temp(today.temperature)} ${this._t("low")}:${this._temp(today.templow)}</div></header>
+      <div class="toolbar"><button class="location-pin ${this._deviceCoords ? "selected" : ""}" data-action="locate" aria-label="${this._t("currentLocation")}" aria-busy="${!!this._locationBusy}" title="${this._t("currentLocation")}">${glyph("location", 20)}</button><span>${this._date(new Date(), { weekday: "long", day: "numeric", month: "long" })}</span>${this._deviceCoords ? `<button class="home-location" data-action="home" aria-label="${this._t("homeLocation")}">${glyph("home", 22)}</button>` : ""}<button class="motion" data-action="motion" aria-label="${this._t(this._paused || this._reduced.matches ? "play" : "pause")}" aria-pressed="${!this._paused && !this._reduced.matches}">${glyph(this._paused ? "play" : "pause", 16)}</button></div>
+
       ${stale ? `<div class="connection-status" role="status">${this._t("stale")} · ${this._t("warnUnavailable")}<button data-action="refresh">${this._t("refresh")}</button></div>` : ""}
       ${this._locationBusy || this._locationError ? `<div class="location-status" role="status">${esc(this._locationBusy ? this._t("locating") : this._locationError)}${!this._locationBusy && this._appTrackers().length ? `<button data-action="app-location">${this._t("appLocation")}</button>` : ""}</div>` : ""}
       ${this._locationNote ? `<div class="location-note">${esc(this._locationNote)}</div>` : ""}
-      <div class="forecast-grid">
+      <div class="overview">
+      <header class="hero" data-section="current"><div class="hero-place"><h1>${esc(this._deviceCoords ? d.name : this._config.name || d.name)}</h1></div><div class="hero-reading"><div class="temperature">${this._temp(c.temperature)}</div><div class="hero-weather"><button class="condition" data-action="detail" data-value="current" aria-label="${this._t("current")}">${this._condition(condition)}${glyph("chevron", 14)}</button><div class="hero-range">${valid(c.apparent_temperature) ? `<span>${this._t("feels")} ${this._temp(c.apparent_temperature)}</span>` : ""}<span>${valid(today.temperature) ? `${this._t("high")} ${this._temp(today.temperature)}` : ""} ${valid(today.templow) ? `${this._t("low")} ${this._temp(today.templow)}` : ""}</span></div></div></div></header>
         <button data-section="warnings" class="panel warning ${warnings.length ? "has-warning" : ""} level-${warnings[0]?.level || 0}" data-action="detail" data-value="warnings"><h2><span aria-hidden="true">${glyph(warnings.length ? "warnings" : "check", 18)}</span>${this._t("warnings")}<span class="chevron" aria-hidden="true">${glyph("chevron", 14)}</span></h2>${warnings.length ? `<div class="warning-title">${esc(warnings[0].friendly_name)}</div><div class="warning-line"><span class="severity-dot"></span>${this._t(stale ? "stale" : new Date(warnings[0].starts_at) <= new Date() ? "active" : "upcoming")} · ${this._time(warnings[0].starts_at)} – ${this._time(warnings[0].ends_at)}</div><p class="warning-preview">${esc(warnings[0].text)}</p>${warnings.length > 1 ? `<span class="warning-count">+${warnings.length - 1}</span>` : ""}` : `<div class="warning-title">${this._t(stale ? "warnUnavailable" : "clear")}</div><div class="warning-line">KMI / IRM</div>`}</button>
-        <section data-section="hourly" class="panel hourly"><div class="panel-header"><h2><span aria-hidden="true">${glyph("hourly", 18)}</span>${this._t("hourly")}</h2><div class="segmented" role="group" aria-label="${this._t("hourly")}">${["temperature", "rain", "wind"].map((m, i) => `<button data-action="mode" data-value="${m}" aria-label="${this._t(m)}" aria-pressed="${this._mode === m}">${glyph(m, 18)}</button>`).join("")}</div></div><div class="hours">${hourly.map((f, i) => `<button class="hour" data-action="hour" data-value="${esc(f.datetime)}"><span>${i === 0 ? this._t("now") : this._time(f.datetime, { minute: undefined })}</span>${icon(f.condition, !f.is_daytime, 32)}<span class="chance">${valid(f.precipitation_probability) ? num(f.precipitation_probability) + "%" : "—"}</span><strong>${this._mode === "temperature" ? this._temp(f.temperature) : this._mode === "rain" ? num(f.precipitation, 1) : num(f.wind_speed)}</strong>${this._mode !== "temperature" ? `<small>${this._mode === "rain" ? "mm" : "km/h"}</small>` : ""}</button>`).join("")}</div></section>
-        <section data-section="daily" class="panel daily"><h2><span aria-hidden="true">${glyph("daily", 18)}</span>${d.daily.length} ${this._nl ? "dagen" : "days"}</h2><div class="days">${this._dailyRows(d.daily)}</div></section>
-        <div class="metrics">
+      </div>
+      <div class="forecast-grid">
+
+        <section data-section="hourly" class="panel hourly"><div class="panel-header"><h2>${this._t("hourly")}</h2><div class="segmented" role="group" aria-label="${this._t("hourly")}">${["temperature", "rain", "wind"].map((m, i) => `<button data-action="mode" data-value="${m}" aria-label="${this._t(m)}" aria-pressed="${this._mode === m}">${glyph(m, 18)}</button>`).join("")}</div></div><div class="hours">${hourly.map((f, i) => `<button class="hour" data-action="hour" data-value="${esc(f.datetime)}"><span>${i === 0 ? this._t("now") : this._time(f.datetime, { minute: undefined })}</span>${icon(f.condition, !f.is_daytime, 32)}<span class="chance">${valid(f.precipitation_probability) ? num(f.precipitation_probability) + "%" : "—"}</span><strong>${this._mode === "temperature" ? this._temp(f.temperature) : this._mode === "rain" ? num(f.precipitation, 1) : num(f.wind_speed)}</strong>${this._mode !== "temperature" ? `<small>${this._mode === "rain" ? "mm" : "km/h"}</small>` : ""}</button>`).join("")}</div></section>
+        <section data-section="daily" class="panel daily"><h2>${d.daily.length} ${this._nl ? "dagen" : "days"}</h2><div class="days">${this._dailyRows(d.daily)}</div></section>
+        <div class="observations"><div class="metrics">
           ${this._panel("feels", `<div class="metric-value">${this._temp(c.apparent_temperature)}</div><div class="metric-note">${this._nl ? "Werkelijk" : "Actual"} ${this._temp(c.temperature)}</div><div class="feels-line"><span style="left:${clamp(50 + ((c.apparent_temperature ?? c.temperature) - c.temperature) * 4, 5, 95)}%"></span></div>`)}
           ${this._panel(sunKey, `<div class="metric-value">${this._time(sunNext)}</div>${this._sunArc()}<div class="metric-note sun-note">${this._t(sunKey === "sunset" ? "sunrise" : "sunset")} ${this._time(d.sun[sunKey === "sunset" ? "sunrise" : "sunset"])}</div>`, "sun")}
           ${this._panel("air", `<div class="aq-head"><span class="metric-value">${num(aq)}</span><span class="aq-category">${aqTitle}</span></div><div class="spectrum aqi"><i style="left:${clamp(((aq || 0) / 120) * 100, 2, 98)}%"></i></div><div class="metric-note">European AQI</div>`)}
@@ -590,11 +605,13 @@ class AtmosphereCard extends HTMLElement {
           ${this._panel("uv", `<div class="metric-value">${num(uv, 1)}</div><div class="metric-note">${uvTitle}</div><div class="spectrum uv"><i style="left:${clamp(((uv || 0) / 12) * 100, 2, 98)}%"></i></div>`)}
           ${this._panel(
             "rain",
-            `<div class="metric-value">${num(today.precipitation, 1)}<span class="unit">mm</span></div><div class="metric-note">${this._t("today")}</div>${this._hourChart(hourly, "precipitation")}`,
+            `<div class="rain-summary"><div><div class="metric-value">${num(today.precipitation, 1)}<span class="unit">mm</span></div><div class="metric-note">${this._t("today")}</div></div>${this._hourChart(hourly, "precipitation")}</div>`,
           )}
         </div>
-        <section data-section="radar" class="panel radar-panel"><div class="panel-header"><h2><span aria-hidden="true">${glyph("radar", 18)}</span>${this._t("radar")}</h2><button class="text-button" data-action="detail" data-value="radar">${this._t("rainmap")} <span aria-hidden="true">${glyph("arrow", 14)}</span></button></div><button class="rain-outlook" data-action="detail" data-value="radar"><span>${this._t(willRain ? "rainSoon" : "noRain")}</span><span aria-hidden="true">${glyph("chevron", 14)}</span></button><div class="rain-chart">${this._rainChart(rainNext)}</div><div class="chart-times"><span>${this._t("now")}</span><span>+30 min</span><span>+60 min</span><span>+90 min</span></div></section>
         ${this._panel("moon", `<div class="moon-layout"><div><div class="moon-phase">${this._moonName(moon.phase)}</div><div class="metric-note">${num(moon.fraction * 100)}% ${this._t("illuminated")}</div><div class="moon-date">${this._date(this._nextFullMoon(), { day: "numeric", month: "short" })}<span>${this._t("nextFull")}</span></div></div><canvas class="moon" width="240" height="240" aria-hidden="true"></canvas></div>`, "moon", "moon-panel")}
+        </div>
+        <section data-section="radar" class="panel radar-panel"><div class="panel-header"><h2>${this._t("radar")}</h2><button class="text-button" data-action="detail" data-value="radar">${this._t("rainmap")} <span aria-hidden="true">${glyph("arrow", 14)}</span></button></div><div class="rainfall"><button class="rain-total" data-action="detail" data-value="rain"><strong>${num(today.precipitation, 1)}<span> mm</span></strong><span>${this._t("today")}${glyph("chevron", 14)}</span></button><div class="nowcast"><button class="rain-outlook" data-action="detail" data-value="radar"><span>${this._t(!rainNext.length ? "rainUnavailable" : willRain ? "rainSoon" : "noRain")}</span><span aria-hidden="true">${glyph("chevron", 14)}</span></button>${rainNext.length ? `<div class="rain-chart">${this._rainChart(rainNext)}</div><div class="chart-times"><span>${this._t("now")}</span><span>+30 min</span><span>+60 min</span><span>+90 min</span></div>` : ""}</div></div></section>
+
         <div class="small-metrics">${this._panel("humidity", `<div class="small-value">${num(c.humidity)}<span>%</span></div><div class="metric-note">${this._t("dew")} ${this._temp(c.dew_point)}</div>`)}${this._panel("visibility", `<div class="small-value">${num(c.visibility, 1)}<span>km</span></div>`)}${this._panel("pressure", `<div class="small-value">${num(c.pressure)}<span>hPa</span></div><div class="pressure-scale"><span>980</span><i style="left:${clamp((((c.pressure || 1013) - 980) / 60) * 100, 0, 100)}%"></i><span>1040</span></div>`)}</div>
       </div><footer><span>${this._t("updated")} ${this._time(d.updated_at)} · KMI / IRM</span><button data-action="detail" data-value="source">${this._t("source")} ⓘ</button></footer>`;
     body.querySelector(".hours").scrollLeft = oldScroll;
@@ -606,13 +623,10 @@ class AtmosphereCard extends HTMLElement {
     this._animate();
   }
   _dailyRows(days) {
-    const vals = days.flatMap((f) => [f.temperature, f.templow]).filter(valid),
-      min = Math.min(...vals) - 1,
-      max = Math.max(...vals) + 1;
     return days
       .map(
         (f, i) =>
-          `<button class="day" data-action="day" data-value="${i}" aria-label="${esc(this._date(`${f.datetime.slice(0, 10)}T12:00:00`, { weekday: "long" }))}: ${this._temp(f.templow)} – ${this._temp(f.temperature)}"><span class="day-name">${i === 0 ? this._t("today") : this._date(`${f.datetime.slice(0, 10)}T12:00:00`, { weekday: "short" })}</span><span class="day-condition">${icon(f.condition, false, 28)}<small>${valid(f.precipitation_probability) ? num(f.precipitation_probability) + "%" : ""}</small></span><span class="low">${this._temp(f.templow)}</span><span class="range"><span style="left:${clamp((((f.templow ?? f.temperature) - min) / (max - min)) * 100, 0, 100)}%;width:${Math.max(3, (((f.temperature ?? min) - (f.templow ?? f.temperature)) / (max - min)) * 100)}%"></span>${i === 0 && valid(this._data.current.temperature) ? `<i style="left:${clamp(((this._data.current.temperature - min) / (max - min)) * 100, 0, 100)}%"></i>` : ""}</span><span class="high">${this._temp(f.temperature)}</span></button>`,
+          `<button class="day" data-action="day" data-value="${i}" aria-label="${esc(this._date(`${f.datetime.slice(0, 10)}T12:00:00`, { weekday: "long" }))}: ${this._temp(f.templow)} – ${this._temp(f.temperature)}"><span class="day-name">${i === 0 ? this._t("today") : this._date(`${f.datetime.slice(0, 10)}T12:00:00`, { weekday: "short" })}</span><span class="day-condition">${icon(f.condition, false, 28)}<small>${valid(f.precipitation_probability) ? num(f.precipitation_probability) + "%" : ""}</small></span><span class="day-description">${this._condition(f.condition)}</span><span class="day-temperatures"><span class="low">${this._temp(f.templow)}</span><span class="high">${this._temp(f.temperature)}</span></span></button>`,
       )
       .join("");
   }
@@ -680,10 +694,10 @@ class AtmosphereCard extends HTMLElement {
       rect = this.getBoundingClientRect();
     if (
       canvas.width !== Math.round(rect.width) ||
-      canvas.height !== Math.round(Math.min(rect.height, 1700))
+      canvas.height !== Math.round(Math.min(rect.height, 330))
     ) {
       canvas.width = Math.round(rect.width);
-      canvas.height = Math.round(Math.min(rect.height, 1700));
+      canvas.height = Math.round(Math.min(rect.height, 330));
     }
   }
   _animate() {
@@ -852,7 +866,7 @@ class AtmosphereCard extends HTMLElement {
       return;
     }
     if (action === "close") {
-      this.shadowRoot.querySelector("dialog").close();
+      this._closeDetail();
       return;
     }
     if (action === "map") {
@@ -860,6 +874,26 @@ class AtmosphereCard extends HTMLElement {
       return;
     }
     this._openDetail(action === "detail" ? value : action, value);
+  }
+  async _closeDetail(instant = this._keyboardAction) {
+    const dialog = this.shadowRoot.querySelector("dialog");
+    if (!dialog.open) return;
+    if (instant) {
+      dialog.dataset.instant = "true";
+      dialog.close();
+      return;
+    }
+    const transition = (this._dialogTransition =
+      (this._dialogTransition || 0) + 1);
+    dialog.dataset.closing = "";
+    // Keep the native top layer until the exit finishes, including on Safari.
+    await Promise.race([
+      Promise.allSettled(
+        dialog.getAnimations({ subtree: true }).map((a) => a.finished),
+      ),
+      new Promise((resolve) => setTimeout(resolve, 220)),
+    ]);
+    if (transition === this._dialogTransition) dialog.close();
   }
   _openDetail(type, value) {
     const d = this._data,
@@ -973,7 +1007,7 @@ class AtmosphereCard extends HTMLElement {
     } else if (type === "rain") {
       content = `<div class="detail-temperature">${num(d.daily[0]?.precipitation, 1)}<span> mm</span></div><p>${t("today")}</p>${this._hourChart(d.hourly.filter((h) => new Date(h.datetime) > new Date()).slice(0, 24), "precipitation")}<button class="full-button" data-action="detail" data-value="radar">${t("radar")} ↗</button>`;
     } else if (type === "source") {
-      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend. Maanbeelden: NASA/LRO." : "Wind maps load from Windy on request. Sun and moon information is calculated locally. Moon imagery: NASA/LRO."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.2.2 ↗</a>`;
+      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend. Maanbeelden: NASA/LRO." : "Wind maps load from Windy on request. Sun and moon information is calculated locally. Moon imagery: NASA/LRO."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.3.0 ↗</a>`;
     } else {
       const map = {
           feels: [c.apparent_temperature, "°C"],
@@ -998,8 +1032,12 @@ class AtmosphereCard extends HTMLElement {
     const dialog = this.shadowRoot.querySelector("dialog");
     dialog.querySelector(".dialog-inner").innerHTML =
       `<div class="dialog-header"><h2 id="detail-title">${esc(title)}</h2><button class="close" data-action="close" aria-label="${t("close")}">${glyph("close", 20)}</button></div>${content}`;
+    this._dialogTransition = (this._dialogTransition || 0) + 1;
+    delete dialog.dataset.closing;
+    dialog.dataset.instant = String(!!this._keyboardAction);
     if (!dialog.open) dialog.showModal();
     if (type === "moon") this._drawMoon(dialog.querySelector(".moon"));
+    dialog.dataset.detail = type;
     dialog.classList.toggle("map-dialog", type === "radar" || type === "map");
     if (type === "radar" || type === "map")
       this._showMap(type === "map" ? value : "radar");
@@ -1058,11 +1096,11 @@ class AtmosphereCard extends HTMLElement {
       el.hidden = count === 0;
       el.dataset.count = count;
     }
-    for (const pair of [
-      [".warning", ".hourly"],
-      [".daily", ".metrics"],
-      [".radar-panel", ".moon-panel"],
-    ]) {
+    const observations = root.querySelector(".observations");
+    observations.hidden =
+      root.querySelector(".metrics").hidden &&
+      root.querySelector(".moon-panel").hidden;
+    for (const pair of [[".daily", ".observations"]]) {
       const [a, b] = pair.map((s) => root.querySelector(s));
       if (a.hidden && !b.hidden) b.style.gridColumn = "1 / -1";
       if (b.hidden && !a.hidden) a.style.gridColumn = "1 / -1";
@@ -1108,8 +1146,12 @@ class AtmosphereCard extends HTMLElement {
       return this._useTracker(trackers[0].entity_id);
     const dialog = this.shadowRoot.querySelector("dialog");
     dialog.classList.remove("map-dialog");
+    delete dialog.dataset.detail;
     dialog.querySelector(".dialog-inner").innerHTML =
       `<div class="dialog-header"><h2 id="detail-title">${this._t("chooseDevice")}</h2><button class="close" data-action="close" aria-label="${this._t("close")}">${glyph("close", 20)}</button></div>${trackers.map((e) => `<button class="tracker-choice" data-action="use-tracker" data-value="${esc(e.entity_id)}" ${this._trackerFresh(e) ? "" : "disabled"}><strong>${esc(e.attributes.friendly_name || e.entity_id)}</strong><span>${this._t("reported")} ${this._time(e.last_updated)} · ±${num(e.attributes.gps_accuracy)} m</span></button>`).join("")}<p>${this._t("staleLocation")}</p>`;
+    this._dialogTransition = (this._dialogTransition || 0) + 1;
+    delete dialog.dataset.closing;
+    dialog.dataset.instant = String(!!this._keyboardAction);
     if (!dialog.open) dialog.showModal();
   }
   async _useTracker(entityId) {
@@ -1119,7 +1161,7 @@ class AtmosphereCard extends HTMLElement {
       this._render();
       return;
     }
-    this.shadowRoot.querySelector("dialog").close();
+    await this._closeDetail();
     await this._loadLocation(
       entity.attributes,
       `${entity.attributes.friendly_name || entityId} · ${this._t("reported")} ${this._time(entity.last_updated)} · ±${num(entity.attributes.gps_accuracy)} m`,
@@ -1218,7 +1260,7 @@ class AtmosphereCard extends HTMLElement {
     const ticks = hours.filter(
       (h, i) => i % Math.max(1, Math.floor(hours.length / 5)) === 0,
     );
-    return `<div class="detail-chart"><svg viewBox="0 0 500 140" role="img" aria-label="${this._t(field === "temperature" ? "temperature" : field === "wind_speed" ? "wind" : "rain")}"><defs><linearGradient id="forecast-fill" x2="0" y2="1"><stop stop-color="#a5e8f3" stop-opacity=".3"/><stop offset="1" stop-color="#a5e8f3" stop-opacity="0"/></linearGradient></defs><path d="M12 110H488M12 65H488M12 20H488" stroke="white" stroke-opacity=".1"/><path d="${area}" fill="url(#forecast-fill)"/><path data-forecast-curve d="${curve}" fill="none" stroke="#aeeaf3" stroke-width="3" stroke-linecap="round"/>${points.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.6" fill="#e4faff" stroke="#3b6888" stroke-width="1.5"/>`).join("")}${ticks.map((h) => `<text x="${x(h)}" y="133" fill="#cadbea" font-size="11" text-anchor="middle">${this._time(h.datetime, { minute: undefined })}</text>`).join("")}</svg><div class="chart-times"><span>${num(min, field === "precipitation" ? 1 : 0)}${unit}</span><span>${num(max, field === "precipitation" ? 1 : 0)}${unit}</span></div></div>`;
+    return `<div class="detail-chart"><svg viewBox="0 0 500 140" preserveAspectRatio="none" role="img" aria-label="${this._t(field === "temperature" ? "temperature" : field === "wind_speed" ? "wind" : "rain")}"><defs><linearGradient id="forecast-fill" x2="0" y2="1"><stop stop-color="#a5e8f3" stop-opacity=".3"/><stop offset="1" stop-color="#a5e8f3" stop-opacity="0"/></linearGradient></defs><path d="M12 110H488M12 65H488M12 20H488" stroke="white" stroke-opacity=".1"/><path d="${area}" fill="url(#forecast-fill)"/><path data-forecast-curve d="${curve}" fill="none" stroke="#aeeaf3" stroke-width="3" stroke-linecap="round"/>${points.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.6" fill="#e4faff" stroke="#3b6888" stroke-width="1.5"/>`).join("")}${ticks.map((h) => `<text x="${x(h)}" y="133" fill="#cadbea" font-size="11" text-anchor="middle">${this._time(h.datetime, { minute: undefined })}</text>`).join("")}</svg><div class="chart-times"><span>${num(min, field === "precipitation" ? 1 : 0)}${unit}</span><span>${num(max, field === "precipitation" ? 1 : 0)}${unit}</span></div></div>`;
   }
 }
 

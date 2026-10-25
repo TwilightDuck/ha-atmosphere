@@ -1,0 +1,273 @@
+/* Weather illustration; colours and movement reflect the reported conditions. */
+.sky {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(
+    155deg,
+    #14568c 0%,
+    #367bb1 32%,
+    #759fc3 65%,
+    #b0c6d8 100%
+  );
+}
+.sky:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(15, 51, 85, 0.1), transparent 60%);
+}
+.sun-orb {
+  position: absolute;
+  top: -80px;
+  left: 68%;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(
+    circle,
+    #fffcece6 0,
+    #fffbeaa6 4%,
+    #ffffe33d 18%,
+    #f5f8eb17 40%,
+    transparent 68%
+  );
+  filter: blur(6px);
+  transform: translateX(-50%);
+}
+.rays {
+  position: absolute;
+  left: 25%;
+  top: -230px;
+  width: 120%;
+  height: 850px;
+  opacity: 0.2;
+  transform: rotate(20deg);
+  background: conic-gradient(
+    from 130deg at 38% 0,
+    transparent 0deg,
+    #fffae7 8deg,
+    transparent 14deg,
+    #fdfbe9 16deg,
+    transparent 23deg,
+    #fff6de 29deg,
+    transparent 36deg
+  );
+  filter: blur(12px);
+}
+.clouds {
+  position: absolute;
+  width: 145%;
+  height: 750px;
+  left: -20%;
+  top: -180px;
+  background-image: url("data:image/svg+xml,CLOUD_TEXTURE");
+  background-size: 100% 100%;
+  opacity: 0.5;
+
+  will-change: transform;
+}
+.clouds.near {
+  top: 60px;
+  left: -25%;
+  width: 160%;
+  height: 800px;
+  opacity: 0.24;
+
+  transform: scaleX(-1);
+}
+.horizon {
+  position: absolute;
+  bottom: -30%;
+  left: -25%;
+  width: 150%;
+  height: 65%;
+  background: radial-gradient(
+    ellipse,
+    rgba(203, 223, 239, 0.25),
+    transparent 65%
+  );
+}
+.stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 8% 8%, white 70%, transparent),
+    radial-gradient(1px 1px at 20% 15%, white 70%, transparent),
+    radial-gradient(1px 1px at 65% 11%, white 70%, transparent),
+    radial-gradient(1px 1px at 92% 21%, white 70%, transparent),
+    radial-gradient(1.5px 1.5px at 77% 5%, white 70%, transparent),
+    radial-gradient(1px 1px at 40% 6%, white 70%, transparent);
+  opacity: 0;
+}
+.precipitation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 100%;
+  opacity: 0.75;
+}
+.paused .clouds {
+  animation-play-state: paused;
+}
+.atmosphere[data-condition="sunny"] .clouds {
+  opacity: 0.21;
+}
+.atmosphere[data-condition="sunny"] .sky {
+  background: linear-gradient(160deg, #176db5, #4c99cd 50%, #b3d7e8);
+}
+.atmosphere[data-condition="cloudy"] .sun-orb {
+  opacity: 0.55;
+}
+.atmosphere[data-condition="cloudy"] .clouds {
+  opacity: 0.65;
+}
+.atmosphere[data-condition="cloudy"] .sky {
+  background: linear-gradient(155deg, #3a657f, #7796ad 60%, #a5b9c8);
+}
+.atmosphere[data-condition*="rain"] .sky,
+.atmosphere[data-condition="pouring"] .sky,
+.atmosphere[data-condition*="lightning"] .sky {
+  background: linear-gradient(145deg, #263b59, #4e6c86 55%, #8da3b5);
+}
+.atmosphere[data-condition*="rain"] .sun-orb,
+.atmosphere[data-condition*="lightning"] .sun-orb {
+  opacity: 0;
+}
+.atmosphere[data-condition*="snow"] .sky {
+  background: linear-gradient(155deg, #687d96, #91a9bd 55%, #b9c8d7);
+}
+.atmosphere[data-condition="fog"] .sky {
+  background: linear-gradient(155deg, #7f929f, #9fadb8 60%, #b7c4cc);
+}
+.atmosphere[data-night="true"] .sky {
+  background: linear-gradient(155deg, #09152f, #183453 55%, #41566d);
+}
+.atmosphere[data-night="true"] .sun-orb {
+  background: radial-gradient(
+    circle,
+    #edf3ff 0,
+    #c1d2f5c9 4%,
+    #afbfe329 7%,
+    transparent 42%
+  );
+  width: 200px;
+  height: 200px;
+  top: 0;
+  left: 78%;
+  filter: blur(1px);
+}
+.atmosphere[data-night="true"] .rays {
+  opacity: 0;
+}
+.atmosphere[data-night="true"] .stars {
+  opacity: 0.7;
+}
+.atmosphere[data-night="true"] .clouds {
+  opacity: 0.17;
+}
+.clouds.bank {
+  top: 180px;
+  left: -28%;
+  width: 160%;
+  height: 520px;
+  opacity: 0.22;
+  filter: blur(5px);
+  background-position: 40% 60%;
+  will-change: transform;
+}
+.clouds.near {
+  opacity: 0.36;
+}
+.rays {
+  transform-origin: 38% 0;
+  will-change: transform;
+}
+.sun-orb {
+  will-change: transform;
+}
+.sky-moon {
+  position: absolute;
+  right: 12%;
+  top: 28px;
+  width: 112px;
+  height: 112px;
+  opacity: 0;
+  filter: drop-shadow(0 0 20px #b7d5ff22);
+}
+.atmosphere[data-night="true"] .sky-moon {
+  opacity: 0.88;
+}
+.atmosphere[data-night="true"] .sun-orb {
+  opacity: 0.14;
+}
+.atmosphere[data-night="true"] .stars {
+  opacity: 0;
+}
+.atmosphere[data-night="true"] .clouds.bank {
+  opacity: 0.1;
+}
+.atmosphere[data-condition="sunny"] .clouds.bank {
+  opacity: 0.12;
+}
+.atmosphere[data-condition="fog"] .clouds.bank {
+  opacity: 0.5;
+  filter: blur(22px);
+}
+.atmosphere[data-condition*="rain"] .clouds.near,
+.atmosphere[data-condition="pouring"] .clouds.near {
+  opacity: 0.64;
+}
+.atmosphere[data-night="true"][data-condition="cloudy"] .sky-moon {
+  opacity: 0.28;
+}
+.atmosphere[data-night="true"][data-condition*="rain"] .sky-moon,
+.atmosphere[data-night="true"][data-condition="pouring"] .sky-moon,
+.atmosphere[data-night="true"][data-condition*="snow"] .sky-moon {
+  opacity: 0;
+}
+.sky:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 78% 12%, #ffe3b4aa, transparent 43%),
+    linear-gradient(178deg, transparent 20%, #ddae9c55 73%, #e9c6ac88);
+  opacity: var(--twilight, 0);
+  pointer-events: none;
+}
+.atmosphere[data-night="true"] .clouds.near {
+  opacity: 0.22;
+}
+.atmosphere[data-condition="cloudy"] .rays {
+  opacity: 0.1;
+}
+
+/* The sky is a weather illustration, not a repeating panel surface. */
+.sky {
+  block-size: 330px;
+}
+.sky:after {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    #18212655 45%,
+    #182126 100%
+  );
+}
+.sky-moon {
+  right: 46%;
+  top: 26px;
+  width: 92px;
+  height: 92px;
+  filter: none;
+}
+@container (max-width:580px) {
+  .sky-moon {
+    right: 20px;
+    top: 68px;
+    width: 76px;
+    height: 76px;
+  }
+}

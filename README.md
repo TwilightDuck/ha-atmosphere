@@ -1,6 +1,6 @@
 # Atmosphere Weather
 
-An Apple Weather-inspired Home Assistant integration, with a living sky and a complete local weather dashboard. Install **one integration**: forecasts, warnings, entities, and the card arrive together. No other weather integration or custom card is required.
+A standalone Home Assistant weather integration with an animated sky and a compact, continuous forecast layout. Install **one integration**: forecasts, warnings, entities, and the card arrive together. No other weather integration or custom card is required.
 
 ![Atmosphere Weather](screenshots/preview-1440.png)
 
@@ -8,11 +8,11 @@ An Apple Weather-inspired Home Assistant integration, with a living sky and a co
 
 - Animated, condition-aware skies: drifting procedural clouds, sunlight, stars, rain, and snow. Day and night follow the location's sunrise and sunset.
 - Current temperature, feels-like temperature, and the day's high and low.
-- Scrollable hourly forecasts with temperature, rain, and wind modes; seven-day forecasts with temperature range bars and detailed daily outlooks.
+- Scrollable hourly forecasts with temperature, rain, and wind modes; multi-day forecasts with condition summaries, low/high temperatures, and detailed daily outlooks.
 - Local **KMI / IRM warnings**, including upcoming warnings, severity, complete affected-area text, and validity windows. Warnings returned for a location can cover a broader region. Read the warning text for the affected area.
 - KMI rain nowcast plus large interactive maps for observed radar, forecast rain, and wind, with local town labels, pan/zoom controls, and a location marker.
 - European air quality index and pollutant details, UV, wind and gusts, humidity, dew point, visibility, and pressure.
-- Locally calculated sun and moon information, a shaded moon, illumination, moonrise/set, and the next full-moon date.
+- Locally calculated sun and moon information, NASA lunar terrain with phase lighting, illumination, moonrise/set, and the next full-moon date.
 - Responsive layouts down to compact 200–240 px cards, configurable panels, keyboard-accessible details, a visual editor, Dutch and English card text, reduced-motion support, and an animation pause button. KMI forecast/warning text supports Dutch, English, French, and German.
 
 ## Install
@@ -32,7 +32,7 @@ The integration registers its bundled card resource automatically for storage-mo
 ```yaml
 lovelace:
   resources:
-    - url: /atmosphere/atmosphere-card.js?v=1.2.2
+    - url: /atmosphere/atmosphere-card.js?v=1.3.0
       type: module
 ```
 
@@ -65,7 +65,7 @@ show:
   - radar
 ```
 
-The default layout keeps the forecast, warnings, sun, air quality, wind, UV, rain, radar, and moon. Humidity, visibility, pressure, and feels-like details are grouped behind the current-condition button below the temperature; those tiles remain opt-in.
+The default layout keeps current conditions and warnings together, followed by hourly forecasts, a daily outlook, sun, air quality, wind, UV, and the moon. Daily rainfall and the rain nowcast share one radar section. The standalone rain tile remains opt-in. Humidity, visibility, pressure, and feels-like details are grouped behind the current-condition button; those tiles also remain opt-in.
 
 Supported panels are `current`, `warnings`, `hourly`, `daily`, `feels`, `sun`, `air`, `wind`, `uv`, `rain`, `radar`, `moon`, `humidity`, `visibility`, and `pressure`. Remaining panels reflow into the available space. Weather maps open directly at a local zoom level in an expanded interactive map. Observed radar, forecast precipitation, and wind have separate layers. Sky motion advances only while the card is visible, so background tabs do not accumulate a catch-up animation.
 
@@ -127,4 +127,4 @@ Remove the card from your dashboards, then delete the Atmosphere integration ent
 
 ## Credits and license
 
-Original implementation, released under MIT. Apple Weather is a visual reference; this project is not affiliated with Apple. The reference projects were [Weather Forecast Card](https://github.com/troinine/ha-weather-forecast-card), [Lunar Phase Card](https://github.com/ngocjohn/lunar-phase-card), [IRM KMI](https://github.com/jdejaegh/irm-kmi-ha), and [Windy Card](https://github.com/timmaurice/lovelace-windy-card). No source from those cards is bundled. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled SunCalc licensing and data attribution.
+Original implementation, released under MIT. The reference projects were [Weather Forecast Card](https://github.com/troinine/ha-weather-forecast-card), [Lunar Phase Card](https://github.com/ngocjohn/lunar-phase-card), [IRM KMI](https://github.com/jdejaegh/irm-kmi-ha), and [Windy Card](https://github.com/timmaurice/lovelace-windy-card). No source from those cards is bundled. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled SunCalc licensing and data attribution.
