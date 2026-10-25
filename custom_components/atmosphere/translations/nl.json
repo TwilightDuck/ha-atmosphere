@@ -1,0 +1,32 @@
+{
+  "title": "Atmosphere Weather",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Weather for your location",
+        "description": "KMI forecasts and local warnings for Belgium and Luxembourg. Includes the Atmosphere card. Supplementary details use Open-Meteo. No API key needed.",
+        "data": {
+          "name": "Location name",
+          "latitude": "Latitude",
+          "longitude": "Longitude",
+          "language": "Forecast and warning language"
+        }
+      },
+      "reconfigure": {
+        "title": "Location settings",
+        "data": {
+          "name": "Location name",
+          "language": "Forecast and warning language"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not retrieve a complete KMI forecast. Try again shortly.",
+      "unsupported_location": "KMI forecasts are supported in Belgium and Luxembourg."
+    },
+    "abort": {
+      "already_configured": "This location is already configured.",
+      "reconfigure_successful": "Location settings updated."
+    }
+  }
+}

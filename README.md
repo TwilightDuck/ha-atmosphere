@@ -1,0 +1,104 @@
+# Atmosphere Weather
+
+An Apple Weather-inspired Home Assistant integration, with a living sky and a complete local weather dashboard. Install **one integration**: forecasts, warnings, entities, and the card arrive together. No other weather integration or custom card is required.
+
+![Atmosphere Weather](screenshots/preview-1440.png)
+
+## Weather that feels like weather
+
+- Animated, condition-aware skies: drifting procedural clouds, sunlight, stars, rain, and snow. Day and night follow the location's sunrise and sunset.
+- Current temperature, feels-like temperature, and the day's high and low.
+- Scrollable hourly forecasts with temperature, rain, and wind modes; seven-day forecasts with temperature range bars and detailed daily outlooks.
+- Local **KMI / IRM warnings**, including upcoming warnings, severity, complete affected-area text, and validity windows. Warnings returned for a location can cover a broader region. Read the warning text for the affected area.
+- KMI rain nowcast, animated radar imagery with a scrubber, and on-demand Windy rain and wind maps.
+- European air quality index and pollutant details, UV, wind and gusts, humidity, dew point, visibility, and pressure.
+- Locally calculated sun and moon information, a shaded moon, illumination, moonrise/set, and the next full-moon date.
+- Responsive layouts, keyboard-accessible details, a visual editor, Dutch and English card text, reduced-motion support, and an animation pause button. KMI forecast/warning text supports Dutch, English, French, and German.
+
+## Install
+
+Requires **Home Assistant 2026.10 or newer**. KMI forecast coverage is **Belgium and Luxembourg**. No API keys are needed.
+
+### HACS
+
+1. In HACS, open **Custom repositories**, add `https://github.com/TwilightDuck/ha-atmosphere`, and choose **Integration**.
+2. Download **Atmosphere Weather** and restart Home Assistant.
+3. Go to **Settings → Devices & services → Add integration → Atmosphere Weather**.
+4. Enter a location name, latitude, longitude, and forecast language. The form defaults to your Home Assistant home location.
+5. Edit your dashboard and add **Atmosphere Weather** from the card picker. Select its weather entity.
+
+The integration registers its bundled card resource automatically for storage-mode dashboards. Refresh an already-open browser after installing. For YAML resources, add:
+
+```yaml
+lovelace:
+  resources:
+    - url: /atmosphere/atmosphere-card.js?v=1.0.0
+      type: module
+```
+
+### Manual installation
+
+Copy `custom_components/atmosphere` into your Home Assistant `custom_components` folder, restart, and follow steps 3–5 above. The released `atmosphere.zip` contains the `atmosphere` directory ready to copy.
+
+## Card configuration
+
+The visual editor is sufficient. An equivalent YAML card is:
+
+```yaml
+type: custom:atmosphere-card
+entity: weather.malle_weather
+```
+
+Use the actual entity created by your integration; names depend on the configured location. Optional `name` overrides the displayed place name; optional `language: nl` or `language: en` overrides card language. Without `entity`, the first loaded Atmosphere location is used. Create additional integration entries for additional locations.
+
+For a full-page dashboard, place the card in a **Panel** view. It also supports native Sections sizing:
+
+```yaml
+type: custom:atmosphere-card
+entity: weather.malle_weather
+grid_options:
+  columns: full
+  rows: auto
+```
+
+## Native entities
+
+Each location creates a device with a weather entity (daily/hourly forecast subscriptions), an active weather-warning safety binary sensor, and feels-like, European AQI, and forecast-updated sensors. Forecast arrays are fetched through an authenticated WebSocket endpoint rather than copied into recorder-heavy state attributes. Warning attributes include complete current/upcoming warning records, so you can build your own automations.
+
+A warning sensor is **unavailable**, rather than clear, when its data fetch fails. The card marks cached data stale, retains warning text as cached evidence, and never treats a missing warning feed as an all-clear. An expired warning is removed from the card even between provider polls.
+
+## Data and privacy
+
+Forecasts, warnings, and radar come from the Royal Meteorological Institute of Belgium, using the `irm-kmi-api` Python library. Atmosphere does **not** depend on the separately installed IRM KMI Home Assistant integration. KMI is polled every seven minutes; optional details and air quality every 30 minutes. A radar outage does not invalidate otherwise healthy forecasts or warnings. Optional source failures leave their values unavailable.
+
+Open-Meteo provides modelled feels-like, humidity, visibility, and dew point. CAMS ENSEMBLE through Open-Meteo provides modelled air quality; these are not measurements from a sensor at your home. Optional requests round coordinates to two decimal places. KMI requests use your configured location. Radar imagery loads from KMI when its detail view opens. Windy is loaded only when you request a map, using rounded coordinates. There is no analytics or telemetry.
+
+All sources require an internet connection. KMI's app API and remote imagery can change independently of this project. The Open-Meteo free endpoint is intended for non-commercial use and has usage limits; see [Open-Meteo terms](https://open-meteo.com/en/terms). Windy maps follow [Windy's terms](https://account.windy.com/agreements/windy-terms-of-use). Weather warnings follow the provider's geographic scope and update cadence.
+
+## Development and validation
+
+```sh
+npm ci
+npm run build
+npm test
+```
+
+The browser suite covers responsive rendering (320, 390, 768, and 1440 px), hourly modes, detail dialogs, warning-feed outage behavior, radar scrubbing, map loading, reduced motion, and sparse optional data. It uses a captured public sample, not a fabricated live forecast.
+
+For the Home Assistant feature check:
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install homeassistant==2026.10.3 irm-kmi-api==1.1.1 pytest pytest-asyncio
+.venv/bin/python -m pytest tests/test_integration.py -q
+```
+
+That check runs a real isolated HA config flow, registers native entities and the resource, calls native daily/hourly forecast services, simulates outages/missing radar, and verifies reload/unload. `scripts/probe.py` is a read-only live-provider probe for the public Malle sample coordinates. `npm run preview` opens the captured sample at `http://127.0.0.1:18764/preview.html`; its snapshot date is visible in the footer and it is not a live dashboard.
+
+## Remove or recover
+
+Remove the card from your dashboards, then delete the Atmosphere integration entry under Devices & services. HACS can remove the downloaded integration. The shared resource is retained so that another configured location's cards keep working; if no Atmosphere entries/cards remain, remove `/atmosphere/atmosphere-card.js` under dashboard Resources. Other weather integrations are unaffected.
+
+## Credits and license
+
+Original implementation, released under MIT. Apple Weather is a visual reference; this project is not affiliated with Apple. The reference projects were [Weather Forecast Card](https://github.com/troinine/ha-weather-forecast-card), [Lunar Phase Card](https://github.com/ngocjohn/lunar-phase-card), [IRM KMI](https://github.com/jdejaegh/irm-kmi-ha), and [Windy Card](https://github.com/timmaurice/lovelace-windy-card). No source from those cards is bundled. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled SunCalc licensing and data attribution.

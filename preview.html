@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="nl">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Atmosphere Weather</title
+  ><style>
+    html {
+      background: #102137;
+    }
+    body {
+      margin: 0;
+      padding: 28px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    atmosphere-card {
+      display: block;
+      max-width: 1160px;
+      margin: auto;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 0;
+      }
+      atmosphere-card {
+        border-radius: 0;
+      }
+    }
+  </style>
+  <body>
+    <atmosphere-card></atmosphere-card>
+    <script type="module">
+      import "./custom_components/atmosphere/frontend/atmosphere-card.js";
+      const data = await (await fetch("/tests/live-sample.json")).json();
+      const card = document.querySelector("atmosphere-card");
+      card.setConfig({
+        type: "custom:atmosphere-card",
+        entity: "weather.malle_weather",
+      });
+      card.hass = {
+        language: "nl",
+        states: {
+          "weather.malle_weather": {
+            entity_id: "weather.malle_weather",
+            state: data.current.condition,
+            attributes: {
+              atmosphere_entry_id: "preview",
+              updated_at: data.updated_at,
+            },
+          },
+        },
+        callWS: async () => structuredClone(data),
+      };
+    </script>
+  </body>
+</html>

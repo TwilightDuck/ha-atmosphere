@@ -1,0 +1,19 @@
+{
+  "name": "ha-atmosphere",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/atmosphere-card.js --bundle --minify --format=esm --target=es2022 --outfile=custom_components/atmosphere/frontend/atmosphere-card.js",
+    "test": "playwright test",
+    "preview": "python3 -m http.server 18764 --bind 127.0.0.1"
+  },
+  "dependencies": {
+    "suncalc": "1.9.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "esbuild": "^0.25.0",
+    "ws": "^8.22.0"
+  }
+}
