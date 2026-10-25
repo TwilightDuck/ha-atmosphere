@@ -57,7 +57,7 @@ The integration registers its bundled card resource automatically for storage-mo
 ```yaml
 lovelace:
   resources:
-    - url: /atmosphere/atmosphere-card.js?v=1.4.1
+    - url: /atmosphere/atmosphere-card.js?v=1.5.0
       type: module
 ```
 
@@ -93,6 +93,20 @@ show:
 The default layout keeps current conditions and warnings together, followed by hourly forecasts, a daily outlook, sun, air quality, wind, UV, and the moon. Daily rainfall and the rain nowcast share one radar section. The standalone rain tile remains opt-in. Humidity, visibility, pressure, and feels-like details are grouped behind the current-condition button; those tiles also remain opt-in.
 
 Supported panels are `current`, `warnings`, `hourly`, `daily`, `feels`, `sun`, `air`, `wind`, `uv`, `rain`, `radar`, `moon`, `humidity`, `visibility`, and `pressure`. Remaining panels reflow into the available space. Weather maps open directly at a local zoom level in an expanded interactive map. Observed radar, forecast precipitation, and wind have separate layers. Sky motion advances only while the card is visible, so background tabs do not accumulate a catch-up animation.
+
+## Reusable overview card
+
+Add **Atmosphere Overview** from Home Assistant’s card picker for a compact dashboard card. It shares the full card’s data, animations, GPS, warning details and interactive maps. Its default panels are current conditions, warnings, hourly forecasts and radar. The visual editor lets each instance choose its own location and panels.
+
+```yaml
+type: custom:atmosphere-overview-card
+entity: weather.malle_weather
+grid_options:
+  columns: full
+  rows: auto
+```
+
+Copy [examples/overview-card.yaml](examples/overview-card.yaml) into any dashboard’s Manual card editor, or use the picker. Replace the entity with the Atmosphere weather entity for that location. The full **Atmosphere Weather** card remains available separately.
 
 ## Current device location
 

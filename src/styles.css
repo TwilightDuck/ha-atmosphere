@@ -1384,3 +1384,10 @@ footer button::after {
   text-decoration: none;
   color: var(--muted);
 }
+/* The overview omits the middle panels, so the hourly divider is sufficient. */
+:host(atmosphere-overview-card)
+  .forecast-grid:has(> .daily[hidden]):has(> .observations[hidden])
+  .radar-panel {
+  border-block-start: 0;
+  padding-block-start: 0;
+}

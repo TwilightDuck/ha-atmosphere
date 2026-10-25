@@ -1,0 +1,5 @@
+type: custom:atmosphere-overview-card
+entity: weather.malle_weather
+grid_options:
+  columns: full
+  rows: auto

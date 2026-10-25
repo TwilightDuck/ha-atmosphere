@@ -855,3 +855,77 @@ test("dismissing a pending location lookup ignores its late error", async ({
     page.getByRole("button", { name: "Huidige locatie", exact: true }),
   ).toHaveAttribute("aria-busy", "false");
 });
+
+test("reusable overview card renders compact defaults and its visual editor agrees", async ({
+  page,
+}) => {
+  await page.route("https://embed.windy.com/**", (r) =>
+    r.fulfill({ body: "Weather map" }),
+  );
+  await open(page);
+  await page.evaluate((data) => {
+    data.updated_at = new Date().toISOString();
+    const hass = {
+      language: "nl",
+      states: {
+        "weather.malle_weather": {
+          entity_id: "weather.malle_weather",
+          state: data.current.condition,
+          attributes: {
+            atmosphere_entry_id: "preview",
+            friendly_name: "Malle weather",
+            updated_at: data.updated_at,
+          },
+        },
+      },
+      callWS: async () => data,
+    };
+    const card = document.createElement("atmosphere-overview-card");
+    const Card = customElements.get("atmosphere-overview-card");
+    const config = Card.getStubConfig(hass);
+    card.setConfig(config);
+    card.hass = hass;
+    document.querySelector("atmosphere-card").replaceWith(card);
+    const editor = Card.getConfigElement();
+    editor.setConfig(config);
+    editor.hass = hass;
+    editor.addEventListener("config-changed", (event) =>
+      card.setConfig(event.detail.config),
+    );
+    document.body.append(editor);
+  }, structuredClone(sample));
+  const card = page.locator("atmosphere-overview-card");
+  for (const section of ["current", "warnings", "hourly", "radar"])
+    await expect(card.locator(`[data-section="${section}"]`)).toBeVisible();
+  await expect(card.locator(".daily")).not.toBeVisible();
+  await expect(card.locator(".observations")).not.toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        window.customCards.find((c) => c.type === "atmosphere-overview-card")
+          .name,
+    ),
+  ).toBe("Atmosphere Overview");
+  const editor = page.locator("atmosphere-card-editor");
+  await expect(
+    editor.locator('[data-section-choice="daily"]'),
+  ).not.toBeChecked();
+  await expect(editor.locator('[data-section-choice="hourly"]')).toBeChecked();
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1200 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await card.screenshot({ path: `screenshots/overview-${width}.png` });
+  }
+  await card.getByRole("button", { name: "Regenkaart", exact: false }).click();
+  await expect(page.locator("dialog iframe")).toHaveAttribute(
+    "src",
+    /overlay=radar/,
+  );
+  await page.keyboard.press("Escape");
+  await editor.locator('[data-section-choice="daily"]').check();
+  await expect(card.locator(".daily")).toBeVisible();
+});

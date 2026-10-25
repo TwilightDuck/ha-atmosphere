@@ -281,6 +281,13 @@ const defaultSections = sections.filter(
     !["feels", "humidity", "visibility", "pressure", "rain"].includes(key),
 );
 
+const overviewSections = ["current", "warnings", "hourly", "radar"];
+const configuredSections = (config) =>
+  config.show ||
+  (config.type === "custom:atmosphere-overview-card"
+    ? overviewSections
+    : defaultSections);
+
 class AtmosphereCard extends HTMLElement {
   constructor() {
     super();
@@ -1152,7 +1159,7 @@ class AtmosphereCard extends HTMLElement {
     } else if (type === "rain") {
       content = `<div class="detail-temperature">${num(d.daily[0]?.precipitation, 1)}<span> mm</span></div><p>${t("today")}</p>${this._hourChart(d.hourly.filter((h) => new Date(h.datetime) > new Date()).slice(0, 24), "precipitation")}<button class="full-button" data-action="detail" data-value="radar">${t("radar")} ↗</button>`;
     } else if (type === "source") {
-      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend. Maanbeelden: NASA/LRO." : "Wind maps load from Windy on request. Sun and moon information is calculated locally. Moon imagery: NASA/LRO."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.4.1 ↗</a>`;
+      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend. Maanbeelden: NASA/LRO." : "Wind maps load from Windy on request. Sun and moon information is calculated locally. Moon imagery: NASA/LRO."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.5.0 ↗</a>`;
     } else {
       const map = {
           feels: [c.apparent_temperature, "°C"],
@@ -1227,7 +1234,7 @@ class AtmosphereCard extends HTMLElement {
   }
   _applyVisibility() {
     const root = this.shadowRoot,
-      show = this._config.show || defaultSections;
+      show = configuredSections(this._config);
     root
       .querySelectorAll("[data-section]")
       .forEach(
@@ -1434,7 +1441,7 @@ class AtmosphereCardEditor extends HTMLElement {
       (e) =>
         e.entity_id.startsWith("weather.") && e.attributes.atmosphere_entry_id,
     );
-    this.shadowRoot.innerHTML = `<style>.section-toggle{display:flex;gap:8px;margin:8px 0}fieldset{border:1px solid var(--divider-color);border-radius:10px}label{display:grid;gap:8px;margin:16px 0}select,input{padding:12px;font:inherit;color:var(--primary-text-color);background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:8px}</style><label>Atmosphere location<select id="entity">${entities.map((e) => `<option value="${esc(e.entity_id)}" ${this._config.entity === e.entity_id ? "selected" : ""}>${esc(e.attributes.friendly_name || e.entity_id)}</option>`).join("")}</select></label><label>Name<input id="name" value="${esc(this._config.name || "")}"/></label><label>Card language<select id="language"><option value="auto">Location language</option><option value="nl">Nederlands</option><option value="en">English</option></select></label><fieldset><legend>Visible panels</legend>${sections.map((key) => `<label class="section-toggle"><input type="checkbox" data-section-choice="${key}" ${(this._config.show || defaultSections).includes(key) ? "checked" : ""}/>${words.en[key] || (key === "sun" ? "Sunrise and sunset" : key)}</label>`).join("")}</fieldset>`;
+    this.shadowRoot.innerHTML = `<style>.section-toggle{display:flex;gap:8px;margin:8px 0}fieldset{border:1px solid var(--divider-color);border-radius:10px}label{display:grid;gap:8px;margin:16px 0}select,input{padding:12px;font:inherit;color:var(--primary-text-color);background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:8px}</style><label>Atmosphere location<select id="entity">${entities.map((e) => `<option value="${esc(e.entity_id)}" ${this._config.entity === e.entity_id ? "selected" : ""}>${esc(e.attributes.friendly_name || e.entity_id)}</option>`).join("")}</select></label><label>Name<input id="name" value="${esc(this._config.name || "")}"/></label><label>Card language<select id="language"><option value="auto">Location language</option><option value="nl">Nederlands</option><option value="en">English</option></select></label><fieldset><legend>Visible panels</legend>${sections.map((key) => `<label class="section-toggle"><input type="checkbox" data-section-choice="${key}" ${configuredSections(this._config).includes(key) ? "checked" : ""}/>${words.en[key] || (key === "sun" ? "Sunrise and sunset" : key)}</label>`).join("")}</fieldset>`;
     this.shadowRoot.querySelectorAll("[data-section-choice]").forEach((el) =>
       el.addEventListener("change", () => {
         const show = [
@@ -1471,6 +1478,15 @@ class AtmosphereCardEditor extends HTMLElement {
       );
   }
 }
+class AtmosphereOverviewCard extends AtmosphereCard {
+  static getStubConfig(hass) {
+    return {
+      ...super.getStubConfig(hass),
+      type: "custom:atmosphere-overview-card",
+    };
+  }
+}
+
 if (!customElements.get("atmosphere-card"))
   customElements.define("atmosphere-card", AtmosphereCard);
 if (!customElements.get("atmosphere-card-editor"))
@@ -1481,5 +1497,15 @@ if (!window.customCards.some((c) => c.type === "atmosphere-card"))
     type: "atmosphere-card",
     name: "Atmosphere Weather",
     description: "Animated skies, KMI forecasts and local warnings.",
+    preview: true,
+  });
+
+if (!customElements.get("atmosphere-overview-card"))
+  customElements.define("atmosphere-overview-card", AtmosphereOverviewCard);
+if (!window.customCards.some((c) => c.type === "atmosphere-overview-card"))
+  window.customCards.push({
+    type: "atmosphere-overview-card",
+    name: "Atmosphere Overview",
+    description: "Current weather, warnings, hourly forecast and radar.",
     preview: true,
   });
