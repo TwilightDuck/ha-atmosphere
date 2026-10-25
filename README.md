@@ -32,7 +32,7 @@ The integration registers its bundled card resource automatically for storage-mo
 ```yaml
 lovelace:
   resources:
-    - url: /atmosphere/atmosphere-card.js?v=1.2.0
+    - url: /atmosphere/atmosphere-card.js?v=1.2.1
       type: module
 ```
 

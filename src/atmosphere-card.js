@@ -976,7 +976,7 @@ class AtmosphereCard extends HTMLElement {
               .slice(0, 12);
       content = `<div class="detail-weather">${icon(f.condition, !f.is_daytime, 64)}<div class="detail-temperature">${this._temp(f.temperature)}</div><p>${this._condition(f.condition)}${f.condition_2 && f.condition_2 !== f.condition ? " → " + this._condition(f.condition_2) : ""}</p></div>${f.text ? `<p>${esc(f.text)}</p>` : ""}${hours.length ? this._hourChart(hours) : ""}${stats(
         [
-          [t("low"), this._temp(f.templow)],
+          ...(valid(f.templow) ? [[t("low"), this._temp(f.templow)]] : []),
           [
             t("rain"),
             `${num(f.precipitation, 1)} mm · ${num(f.precipitation_probability)}%`,
@@ -1030,7 +1030,7 @@ class AtmosphereCard extends HTMLElement {
     } else if (type === "rain") {
       content = `<div class="detail-temperature">${num(d.daily[0]?.precipitation, 1)}<span> mm</span></div><p>${t("today")}</p>${this._hourChart(d.hourly.filter((h) => new Date(h.datetime) > new Date()).slice(0, 24), "precipitation")}<button class="full-button" data-action="detail" data-value="radar">${t("radar")} ↗</button>`;
     } else if (type === "source") {
-      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend." : "Wind maps load from Windy on request. Sun and moon information is calculated locally."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.2.0 ↗</a>`;
+      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend." : "Wind maps load from Windy on request. Sun and moon information is calculated locally."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.2.1 ↗</a>`;
     } else {
       const map = {
           feels: [c.apparent_temperature, "°C"],

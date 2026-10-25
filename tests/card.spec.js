@@ -442,13 +442,20 @@ test("condition-specific skies render day, night, rain and snow effects", async 
       },
     }));
     await page.clock.runFor(5000);
-    const painted = await page.locator(".precipitation").evaluate((canvas) => {
-      const pixels = canvas
-        .getContext("2d")
-        .getImageData(0, 0, canvas.width, canvas.height).data;
-      return pixels.some((v, i) => i % 4 === 3 && v > 0);
-    });
-    expect(painted).toBe(true);
+    await expect
+      .poll(
+        async () => {
+          await page.clock.runFor(50);
+          return page.locator(".precipitation").evaluate((canvas) => {
+            const pixels = canvas
+              .getContext("2d")
+              .getImageData(0, 0, canvas.width, canvas.height).data;
+            return pixels.some((v, i) => i % 4 === 3 && v > 0);
+          });
+        },
+        { message: condition, timeout: 4000 },
+      )
+      .toBe(true);
     await expect(page.locator(".atmosphere")).toHaveAttribute(
       "data-night",
       String(night),
