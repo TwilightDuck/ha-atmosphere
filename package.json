@@ -1,10 +1,10 @@
 {
   "name": "ha-atmosphere",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "esbuild src/atmosphere-card.js --bundle --loader:.css=text --loader:.svg=text --minify --format=esm --target=es2022 --outfile=custom_components/atmosphere/frontend/atmosphere-card.js",
+    "build": "esbuild src/atmosphere-card.js --bundle --loader:.css=text --loader:.svg=text --loader:.jpg=dataurl --minify --format=esm --target=es2022 --outfile=custom_components/atmosphere/frontend/atmosphere-card.js",
     "test": "playwright test",
     "preview": "python3 -m http.server 18764 --bind 127.0.0.1"
   },

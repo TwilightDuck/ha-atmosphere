@@ -35,3 +35,14 @@ KMI / IRM — Royal Meteorological Institute of Belgium, https://www.meteo.be/. 
 Supplementary weather: Open-Meteo (https://open-meteo.com/). Air quality: CAMS ENSEMBLE via Open-Meteo. Provider attribution is also displayed inside the card.
 
 Windy map embeds are loaded on request; Windy content retains its own provider terms and attribution.
+
+## NASA lunar surface map
+
+`src/moon-surface.jpg` is NASA SVS CGI Moon Kit’s 2019 LRO color mosaic,
+credited to NASA/Goddard Space Flight Center Scientific Visualization Studio,
+LRO, and the LROC team. It is projected onto the visible lunar hemisphere and
+illuminated locally for the current phase.
+
+Source: https://svs.gsfc.nasa.gov/4720/
+Original: https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles_1k.jpg
+NASA media usage: https://www.nasa.gov/nasa-brand-center/images-and-media/

@@ -466,3 +466,40 @@ test("condition-specific skies render day, night, rain and snow effects", async 
     });
   }
 });
+
+test("lunar surface renders with the correct illuminated hemisphere across phases", async ({ page }) => {
+  // Fixed astronomical dates cover both terminator directions and the two extremes.
+  for (const [date, phase] of [
+    ["2026-10-18", "waxing"], ["2026-10-26", "full"],
+    ["2026-11-01", "waning"], ["2026-11-09", "new"],
+  ]) {
+    await page.clock.install({ time: new Date(`${date}T12:00:00Z`) });
+    await open(page);
+    await page.locator(".moon-panel").click();
+    const moon = page.locator(".detail-moon");
+    await expect.poll(() => moon.evaluate(canvas => {
+      const { data } = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+      return data.some((value, index) => index % 4 === 3 && value > 0);
+    })).toBe(true);
+    const brightness = await moon.evaluate(canvas => {
+      const w = canvas.width, pixels = canvas.getContext("2d").getImageData(0, 0, w, w).data;
+      let left = 0, right = 0, count = 0;
+      for (let y = w * .25; y < w * .75; y++) {
+        for (let x = w * .25; x < w * .5; x++) {
+          left += pixels[(y * w + x) * 4];
+          right += pixels[(y * w + w - 1 - x) * 4];
+          count++;
+        }
+      }
+      return { left: left / count, right: right / count };
+    });
+    if (phase === "waxing") expect(brightness.right).toBeGreaterThan(brightness.left * 5);
+    if (phase === "waning") expect(brightness.left).toBeGreaterThan(brightness.right * 5);
+    if (phase === "full") {
+      expect(Math.min(brightness.left, brightness.right)).toBeGreaterThan(70);
+      await page.locator("dialog").screenshot({ path: "screenshots/moon-realistic.png" });
+    }
+    if (phase === "new") expect(Math.max(brightness.left, brightness.right)).toBeLessThan(12);
+    await page.clock.resume();
+  }
+});

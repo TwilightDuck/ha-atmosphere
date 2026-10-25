@@ -1,4 +1,5 @@
 import SunCalc from "suncalc";
+import { drawMoon } from "./moon.js";
 import { styles } from "./styles.js";
 
 import { glyph } from "./icons.js";
@@ -672,65 +673,7 @@ class AtmosphereCard extends HTMLElement {
     return new Date(Date.now() + 29.53 * 86400000);
   }
   _drawMoon(canvas) {
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d"),
-      w = canvas.width,
-      r = w * 0.43,
-      c = w / 2;
-    const phase = SunCalc.getMoonIllumination(new Date()).phase;
-    ctx.clearRect(0, 0, w, w);
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(c, c, r, 0, Math.PI * 2);
-    ctx.clip();
-    const base = ctx.createRadialGradient(
-      c - r * 0.25,
-      c - r * 0.3,
-      0,
-      c,
-      c,
-      r,
-    );
-    base.addColorStop(0, "#eceff3");
-    base.addColorStop(0.7, "#bdc6d2");
-    base.addColorStop(1, "#79899d");
-    ctx.fillStyle = base;
-    ctx.fillRect(0, 0, w, w);
-    let seed = 73;
-    const random = () => {
-      seed = (seed * 16807) % 2147483647;
-      return (seed - 1) / 2147483646;
-    };
-    for (let i = 0; i < 260; i++) {
-      const x = random() * w,
-        y = random() * w,
-        size = 2 + random() * 14;
-      ctx.beginPath();
-      ctx.ellipse(x, y, size, size * 0.8, random() * 6, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(37,52,73,${random() * 0.15})`;
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,.09)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-    const waxing = phase < 0.5,
-      cosine = Math.cos(phase * 2 * Math.PI);
-    // The terminator is a projected semicircle, so quarter moons have a straight edge.
-    ctx.beginPath();
-    for (let y = -r; y <= r; y += 1) {
-      const half = Math.sqrt(r * r - y * y),
-        term = (waxing ? 1 : -1) * cosine * half;
-      if (y === -r) ctx.moveTo(c + term, c + y);
-      else ctx.lineTo(c + term, c + y);
-    }
-    for (let y = r; y >= -r; y -= 1) {
-      const half = Math.sqrt(r * r - y * y);
-      ctx.lineTo(c + (waxing ? -half : half), c + y);
-    }
-    ctx.closePath();
-    ctx.fillStyle = "rgba(7,17,35,.9)";
-    ctx.fill();
-    ctx.restore();
+    return drawMoon(canvas, SunCalc.getMoonIllumination(new Date()).phase);
   }
   _sizeCanvas() {
     const canvas = this.shadowRoot.querySelector(".precipitation"),
@@ -1030,7 +973,7 @@ class AtmosphereCard extends HTMLElement {
     } else if (type === "rain") {
       content = `<div class="detail-temperature">${num(d.daily[0]?.precipitation, 1)}<span> mm</span></div><p>${t("today")}</p>${this._hourChart(d.hourly.filter((h) => new Date(h.datetime) > new Date()).slice(0, 24), "precipitation")}<button class="full-button" data-action="detail" data-value="radar">${t("radar")} ↗</button>`;
     } else if (type === "source") {
-      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend." : "Wind maps load from Windy on request. Sun and moon information is calculated locally."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.2.1 ↗</a>`;
+      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend. Maanbeelden: NASA/LRO." : "Wind maps load from Windy on request. Sun and moon information is calculated locally. Moon imagery: NASA/LRO."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.2.2 ↗</a>`;
     } else {
       const map = {
           feels: [c.apparent_temperature, "°C"],
