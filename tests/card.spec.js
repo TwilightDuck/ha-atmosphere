@@ -199,6 +199,9 @@ test("GPS lookup uses this browser location and can return to the saved place", 
   );
   expect(request.latitude).toBe(50.85);
   expect(request.longitude).toBe(4.35);
+  await expect(
+    page.getByRole("button", { name: "Opgeslagen locatie", exact: true }),
+  ).toContainText("Terug");
   await page
     .getByRole("button", { name: "Opgeslagen locatie", exact: true })
     .click();
@@ -868,10 +871,18 @@ test("reusable overview card renders compact defaults and its visual editor agre
     r.fulfill({ body: "Weather map" }),
   );
   await open(page);
-  await mountOverview(page, { ...sample, updated_at: new Date().toISOString() });
+  await mountOverview(page, {
+    ...sample,
+    updated_at: new Date().toISOString(),
+  });
   const card = page.locator("atmosphere-overview-card");
   for (const section of ["current", "warnings", "hourly", "radar"])
     await expect(card.locator(`[data-section="${section}"]`)).toBeVisible();
+  expect(
+    await card
+      .locator(".radar-panel")
+      .evaluate((el) => getComputedStyle(el).borderTopWidth),
+  ).toBe("0px");
   await expect(card.locator(".daily")).not.toBeVisible();
   await expect(card.locator(".observations")).not.toBeVisible();
   expect(
@@ -939,20 +950,36 @@ async function mountOverview(page, data) {
   }, structuredClone(data));
 }
 
-test("overview hides all-clear warnings and fits a dashboard column", async ({ page }) => {
+test("overview hides all-clear warnings and fits a dashboard column", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 600, height: 1000 });
-  for (const state of ["clear", "active", "upcoming", "expired", "outage", "stale"]) {
+  for (const state of [
+    "clear",
+    "active",
+    "upcoming",
+    "expired",
+    "outage",
+    "stale",
+  ]) {
     await open(page);
     const data = structuredClone(sample);
     data.rain = Array.from({ length: 19 }, (_, i) => ({
       datetime: new Date(Date.now() + i * 300000).toISOString(),
       precipitation: i < 6 ? 0 : 0.3,
+      unit: "mm/10min",
     }));
-    data.warnings = ["active", "upcoming", "expired"].includes(state) ? data.warnings : [];
-    if (state === "upcoming") data.warnings[0].starts_at = new Date(Date.now() + 600000).toISOString();
-    if (state === "expired") data.warnings[0].ends_at = new Date(Date.now() - 600000).toISOString();
+    data.warnings = ["active", "upcoming", "expired"].includes(state)
+      ? data.warnings
+      : [];
+    if (state === "upcoming")
+      data.warnings[0].starts_at = new Date(Date.now() + 600000).toISOString();
+    if (state === "expired")
+      data.warnings[0].ends_at = new Date(Date.now() - 600000).toISOString();
     data.available = state !== "outage";
-    data.updated_at = new Date(Date.now() - (state === "stale" ? 3600000 : 0)).toISOString();
+    data.updated_at = new Date(
+      Date.now() - (state === "stale" ? 3600000 : 0),
+    ).toISOString();
     await mountOverview(page, data);
     const card = page.locator("atmosphere-overview-card");
     if (["clear", "expired"].includes(state)) {
@@ -966,6 +993,68 @@ test("overview hides all-clear warnings and fits a dashboard column", async ({ p
       await expect(card.locator("dialog")).toBeVisible();
       await page.keyboard.press("Escape");
     }
-    expect(await card.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    expect(await card.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+      true,
+    );
   }
+});
+
+test("rain outlook explains dry, wet, uncertain and unavailable forecasts", async ({
+  page,
+}) => {
+  for (const state of ["dry", "wet", "possible", "unavailable"]) {
+    await open(page, (d) => ({
+      ...d,
+      rain:
+        state === "unavailable"
+          ? []
+          : Array.from({ length: 9 }, (_, i) => ({
+              datetime: new Date(Date.now() + (i + 1) * 600000).toISOString(),
+              precipitation: state === "wet" && i > 2 ? 0.4 : 0,
+              might_rain: state === "possible",
+              unit: "mm/10min",
+            })),
+    }));
+    const radar = page.locator(".radar-panel");
+    await expect(page.locator('[data-action="motion"]')).toHaveCount(0);
+    await expect(radar.locator(".rain-total")).toContainText(
+      "Vandaag verwacht",
+    );
+    if (state === "wet") {
+      await expect(radar.getByRole("img", { name: /mm\/10min/ })).toBeVisible();
+      await expect(radar.locator(".rain-scale")).toContainText("0.4");
+      await expect(radar.locator(".rain-scale")).toContainText("mm/10min");
+      for (const width of [1200, 390, 240]) {
+        await page.setViewportSize({ width, height: 1400 });
+        expect(
+          await radar.evaluate((el) => el.scrollWidth <= el.clientWidth),
+        ).toBe(true);
+      }
+      await page.setViewportSize({ width: 390, height: 1400 });
+      await radar.screenshot({ path: "screenshots/rain-wet.png" });
+    } else {
+      await expect(radar.locator(".rain-chart")).toHaveCount(0);
+      await expect(radar.locator(".chart-times")).toHaveCount(0);
+      await expect(radar.locator(".rain-outlook")).toContainText(
+        state === "dry"
+          ? "Geen regen verwacht"
+          : state === "possible"
+            ? "Kans op regen"
+            : "niet beschikbaar",
+      );
+    }
+  }
+  await page.evaluate(() => {
+    const card = document.querySelector("atmosphere-card");
+    card.setConfig({
+      type: "custom:atmosphere-card",
+      entity: "weather.malle_weather",
+      show: ["current", "hourly", "radar"],
+    });
+  });
+  expect(
+    await page
+      .locator(".radar-panel")
+      .evaluate((el) => getComputedStyle(el).borderTopWidth),
+  ).toBe("0px");
 });

@@ -6,9 +6,7 @@ const paths = {
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
   location:
     '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 1v4m0 14v4M1 12h4m14 0h4"/>',
-  home: '<path d="m3 10 9-7 9 7v10H5V10m4 10v-7h6v7"/>',
-  pause: '<path d="M8 5v14M16 5v14"/>',
-  play: '<path d="m8 4 12 8-12 8Z"/>',
+  back: '<path d="m10 6-6 6 6 6M4 12h16"/>',
   chevron: '<path d="m9 5 7 7-7 7"/>',
   arrow: '<path d="M6 18 18 6M6 6h12v12"/>',
   hourly: '<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',

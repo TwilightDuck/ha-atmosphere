@@ -3,7 +3,6 @@
 }
 /* Feedback: only the small controls compress; reading surfaces stay still. */
 .location-pin,
-.motion,
 .home-location,
 .close,
 .segmented button,
@@ -13,7 +12,6 @@
 }
 :is(
     .location-pin,
-    .motion,
     .home-location,
     .close,
     .segmented button,
@@ -67,7 +65,6 @@ dialog[data-instant="true"]::backdrop {
 }
 @media (prefers-reduced-motion: reduce) {
   .location-pin,
-  .motion,
   .home-location,
   .close,
   .segmented button,
@@ -77,7 +74,6 @@ dialog[data-instant="true"]::backdrop {
   }
   :is(
       .location-pin,
-      .motion,
       .home-location,
       .close,
       .segmented button,

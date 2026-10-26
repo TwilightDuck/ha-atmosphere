@@ -13,11 +13,11 @@ A standalone Home Assistant weather integration with an animated sky and a compa
 - KMI rain nowcast plus large interactive maps for observed radar, forecast rain, and wind, with local town labels, pan/zoom controls, and a location marker.
 - European air quality index and pollutant details, UV, wind and gusts, humidity, dew point, visibility, and pressure.
 - Locally calculated sun and moon information, NASA lunar terrain with phase lighting, illumination, moonrise/set, and the next full-moon date.
-- Responsive layouts down to compact 200–240 px cards, configurable panels, keyboard-accessible details, a visual editor, Dutch and English card text, reduced-motion support, and an animation pause button. KMI forecast/warning text supports Dutch, English, French, and German.
+- Responsive layouts down to compact 200–240 px cards, configurable panels, keyboard-accessible details, a visual editor, Dutch and English card text, system reduced-motion support. KMI forecast/warning text supports Dutch, English, French, and German.
 
 ## Weather and event animations
 
-Each supported weather state has at least two complementary effects. Sky motion shares one active-time clock; hidden tabs, the pause control, and reduced motion stop it without catch-up. Readings stay still. The condition icon moves gently, pointer mode changes glide between selections and briefly reveal the forecast icons, and keyboard changes stay immediate.
+Each supported weather state has at least two complementary effects. Sky motion shares one active-time clock; hidden tabs and system reduced motion stop it without catch-up. Readings stay still. The condition icon moves gently, pointer mode changes glide between selections and briefly reveal the forecast icons, and keyboard changes stay immediate.
 
 | Weather | Effects |
 | --- | --- |
@@ -57,7 +57,7 @@ The integration registers its bundled card resource automatically for storage-mo
 ```yaml
 lovelace:
   resources:
-    - url: /atmosphere/atmosphere-card.js?v=1.5.1
+    - url: /atmosphere/atmosphere-card.js?v=1.5.2
       type: module
 ```
 
@@ -90,7 +90,7 @@ show:
   - radar
 ```
 
-The default layout keeps current conditions and warnings together, followed by hourly forecasts, a daily outlook, sun, air quality, wind, UV, and the moon. Daily rainfall and the rain nowcast share one radar section. The standalone rain tile remains opt-in. Humidity, visibility, pressure, and feels-like details are grouped behind the current-condition button; those tiles also remain opt-in.
+The default layout keeps current conditions and warnings together, followed by hourly forecasts, a daily outlook, sun, air quality, wind, UV, and the moon. Daily expected rainfall and the rain nowcast share one radar section. Dry forecasts show a plain dry-period message. A rain curve appears only for positive amounts, with a zero-to-maximum scale in the provider’s units (KMI: mm/10min); uncertain rain without an amount is shown as a chance of rain. The standalone rain tile remains opt-in. Humidity, visibility, pressure, and feels-like details are grouped behind the current-condition button; those tiles also remain opt-in.
 
 Supported panels are `current`, `warnings`, `hourly`, `daily`, `feels`, `sun`, `air`, `wind`, `uv`, `rain`, `radar`, `moon`, `humidity`, `visibility`, and `pressure`. Remaining panels reflow into the available space. Weather maps open directly at a local zoom level in an expanded interactive map. Observed radar, forecast precipitation, and wind have separate layers. Sky motion advances only while the card is visible, so background tabs do not accumulate a catch-up animation.
 
@@ -112,7 +112,7 @@ KMI UV remains preferred when provided. If KMI omits it, Atmosphere uses the nea
 
 ## Current device location
 
-Tap the **⌖** button to request current-location weather; **⌂** returns to the saved location. The close button dismisses location messages or cancels a pending lookup; late results cannot reopen it. This does not change the saved integration entry or its entities.
+Tap the **⌖** button to request current-location weather; **← Back** returns to the saved location. The close button dismisses location messages or cancels a pending lookup; late results cannot reopen it. This does not change the saved integration entry or its entities.
 
 Regular HTTPS browsers request one GPS fix using their location permission. Home Assistant Companion does not expose a documented frontend command that forces a fresh native GPS fix, so the app path reads GPS trackers linked to the **signed-in viewer's person**, never a globally fixed phone. A viewer with multiple GPS devices gets a picker. The fallback shows its source, last reported time, and accuracy. It rejects unavailable, missing, older-than-15-minute, or worse-than-250-metre app locations. Refresh the Companion app with **Exact** location enabled if its location is old; different people should use their own HA accounts and linked person records. A shared login cannot identify which physical phone is viewing the card.
 

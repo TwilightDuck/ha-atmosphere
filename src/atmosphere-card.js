@@ -39,6 +39,9 @@ const words = {
   en: {
     currentLocation: "Current location",
     homeLocation: "Saved location",
+    back: "Back",
+    todayForecast: "Expected today",
+    rainPossible: "Rain is possible in the next 90 minutes",
     locating: "Getting your location…",
     locationDenied:
       "Location permission is needed. Enable it in your browser or choose your app device.",
@@ -85,8 +88,6 @@ const words = {
     close: "Close",
     closeLocation: "Dismiss location message",
     radarLayer: "Radar",
-    pause: "Pause animation",
-    play: "Animate weather",
     temperature: "Temperature",
     updated: "Updated",
     details: "Details",
@@ -133,6 +134,9 @@ const words = {
   nl: {
     currentLocation: "Huidige locatie",
     homeLocation: "Opgeslagen locatie",
+    back: "Terug",
+    todayForecast: "Vandaag verwacht",
+    rainPossible: "Kans op regen in de komende 90 minuten",
     locating: "Je locatie wordt opgehaald…",
     locationDenied:
       "Locatietoestemming is nodig. Schakel die in je browser in of kies je app-apparaat.",
@@ -179,8 +183,6 @@ const words = {
     close: "Sluiten",
     closeLocation: "Locatiemelding sluiten",
     radarLayer: "Radar",
-    pause: "Animatie pauzeren",
-    play: "Weer animeren",
     temperature: "Temperatuur",
     updated: "Bijgewerkt",
     details: "Details",
@@ -293,7 +295,6 @@ class AtmosphereCard extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this._mode = "temperature";
-    this._paused = false;
     this._fetching = false;
     this._reduced = matchMedia("(prefers-reduced-motion: reduce)");
     this.shadowRoot.innerHTML = `<style>${styles}</style><ha-card><div class="atmosphere"><div class="sky" aria-hidden="true"><div class="sun-orb"></div><div class="rays"></div><div class="stars"></div><div class="clouds far"></div><div class="clouds near"></div><div class="clouds bank"></div><canvas class="sky-moon" width="240" height="240"></canvas><canvas class="precipitation"></canvas><div class="horizon"></div><div class="sky-aura"></div><div class="sky-ribbon"></div><div class="sky-event"></div></div><div class="body"></div></div></ha-card><dialog aria-labelledby="detail-title"><div class="dialog-inner"></div></dialog>`;
@@ -532,10 +533,7 @@ class AtmosphereCard extends HTMLElement {
     );
     sky.classList.toggle(
       "paused",
-      this._paused ||
-        this._reduced.matches ||
-        !this._visible ||
-        document.hidden,
+      this._reduced.matches || !this._visible || document.hidden,
     );
     const hourly = d.hourly
       .filter((f) => new Date(f.datetime).getTime() > Date.now() - 3600000)
@@ -597,11 +595,14 @@ class AtmosphereCard extends HTMLElement {
         new Date(r.datetime) > new Date() &&
         new Date(r.datetime) < new Date(Date.now() + 90 * 60000),
     );
+    const hasRain = rainNext.some(
+      (r) => valid(r.precipitation) && r.precipitation > 0,
+    );
     const willRain = rainNext.some(
       (r) => (r.precipitation || 0) > 0 || r.might_rain,
     );
     body.innerHTML = `
-      <div class="toolbar"><button class="location-pin ${this._deviceCoords ? "selected" : ""}" data-action="locate" aria-label="${this._t("currentLocation")}" aria-busy="${!!this._locationBusy}" title="${this._t("currentLocation")}">${glyph("location", 20)}</button><span>${this._date(new Date(), { weekday: "long", day: "numeric", month: "long" })}</span>${this._deviceCoords ? `<button class="home-location" data-action="home" aria-label="${this._t("homeLocation")}">${glyph("home", 22)}</button>` : ""}<button class="motion" data-action="motion" aria-label="${this._t(this._paused || this._reduced.matches ? "play" : "pause")}" aria-pressed="${!this._paused && !this._reduced.matches}">${glyph(this._paused ? "play" : "pause", 16)}</button></div>
+      <div class="toolbar"><button class="location-pin ${this._deviceCoords ? "selected" : ""}" data-action="locate" aria-label="${this._t("currentLocation")}" aria-busy="${!!this._locationBusy}" title="${this._t("currentLocation")}">${glyph("location", 20)}</button><span>${this._date(new Date(), { weekday: "long", day: "numeric", month: "long" })}</span>${this._deviceCoords ? `<button class="home-location" data-action="home" aria-label="${this._t("homeLocation")}">${glyph("back", 18)}<span>${this._t("back")}</span></button>` : ""}</div>
 
       ${stale ? `<div class="connection-status" role="status">${this._t("stale")} · ${this._t("warnUnavailable")}<button data-action="refresh">${this._t("refresh")}</button></div>` : ""}
       ${this._locationBusy || this._locationError ? `<div class="location-status" role="status"><div class="location-message">${esc(this._locationBusy ? this._t("locating") : this._locationError)}${!this._locationBusy && this._appTrackers().length ? `<button data-action="app-location">${this._t("appLocation")}</button>` : ""}</div><button class="close location-dismiss" data-action="dismiss-location" aria-label="${this._t("closeLocation")}">${glyph("close", 18)}</button></div>` : ""}
@@ -627,7 +628,7 @@ class AtmosphereCard extends HTMLElement {
         </div>
         ${this._panel("moon", `<div class="moon-layout"><div><div class="moon-phase">${this._moonName(moon.phase)}</div><div class="metric-note">${num(moon.fraction * 100)}% ${this._t("illuminated")}</div><div class="moon-date">${this._date(this._nextFullMoon(), { day: "numeric", month: "short" })}<span>${this._t("nextFull")}</span></div></div><canvas class="moon" width="240" height="240" aria-hidden="true"></canvas></div>`, "moon", "moon-panel")}
         </div>
-        <section data-section="radar" class="panel radar-panel"><div class="panel-header"><h2>${this._t("radar")}</h2><button class="text-button" data-action="detail" data-value="radar">${this._t("rainmap")} <span aria-hidden="true">${glyph("arrow", 14)}</span></button></div><div class="rainfall"><button class="rain-total" data-action="detail" data-value="rain"><strong>${num(today.precipitation, 1)}<span> mm</span></strong><span>${this._t("today")}${glyph("chevron", 14)}</span></button><div class="nowcast"><button class="rain-outlook" data-action="detail" data-value="radar"><span>${this._t(!rainNext.length ? "rainUnavailable" : willRain ? "rainSoon" : "noRain")}</span><span aria-hidden="true">${glyph("chevron", 14)}</span></button>${rainNext.length ? `<div class="rain-chart">${this._rainChart(rainNext)}</div><div class="chart-times"><span>${this._t("now")}</span><span>+30 min</span><span>+60 min</span><span>+90 min</span></div>` : ""}</div></div></section>
+        <section data-section="radar" class="panel radar-panel"><div class="panel-header"><h2>${this._t("radar")}</h2><button class="text-button" data-action="detail" data-value="radar">${this._t("rainmap")} <span aria-hidden="true">${glyph("arrow", 14)}</span></button></div><div class="rainfall"><button class="rain-total" data-action="detail" data-value="rain"><strong>${num(today.precipitation, 1)}<span> mm</span></strong><span>${this._t("todayForecast")}${glyph("chevron", 14)}</span></button><div class="nowcast"><button class="rain-outlook" data-action="detail" data-value="radar"><span>${this._t(!rainNext.some((r) => valid(r.precipitation) || r.might_rain) ? "rainUnavailable" : hasRain ? "rainSoon" : willRain ? "rainPossible" : "noRain")}</span><span aria-hidden="true">${glyph("chevron", 14)}</span></button>${hasRain ? this._rainChart(rainNext) : ""}</div></div></section>
 
         <div class="small-metrics">${this._panel("humidity", `<div class="small-value">${num(c.humidity)}<span>%</span></div><div class="metric-note">${this._t("dew")} ${this._temp(c.dew_point)}</div>`)}${this._panel("visibility", `<div class="small-value">${num(c.visibility, 1)}<span>km</span></div>`)}${this._panel("pressure", `<div class="small-value">${num(c.pressure)}<span>hPa</span></div><div class="pressure-scale"><span>980</span><i style="left:${clamp((((c.pressure || 1013) - 980) / 60) * 100, 0, 100)}%"></i><span>1040</span></div>`)}</div>
       </div><footer><span>${this._t("updated")} ${this._time(d.updated_at)} · KMI / IRM</span><button data-action="detail" data-value="source">${this._t("source")} ⓘ</button></footer>`;
@@ -663,21 +664,26 @@ class AtmosphereCard extends HTMLElement {
     return `<svg class="sun-arc" viewBox="0 0 200 76" aria-hidden="true"><path d="${arc}" fill="none" stroke="white" stroke-opacity=".22" stroke-width="5"/><path d="M0 57h200" stroke="white" stroke-opacity=".3"/><circle cx="${x}" cy="${y}" r="6" fill="#fff8d9" style="filter:drop-shadow(0 0 6px #fff)"/></svg>`;
   }
   _rainChart(rain) {
-    if (!rain.length) return '<span class="no-data">—</span>';
-    const max = Math.max(1, ...rain.map((r) => r.precipitation || 0));
-    const points = rain
+    const samples = rain.filter((r) => valid(r.precipitation));
+    if (!samples.length) return "";
+    const max = Math.max(
+      0.1,
+      Math.ceil(Math.max(...samples.map((r) => r.precipitation)) * 10) / 10,
+    );
+    const unit = samples.find((r) => r.unit)?.unit || "";
+    const points = samples
       .map((r) => [
         clamp(
           ((new Date(r.datetime) - Date.now()) / (90 * 60000)) * 500,
           0,
           500,
         ),
-        60 - ((r.precipitation || 0) / max) * 54,
+        60 - (r.precipitation / max) * 54,
       ])
       .filter((p, i, a) => !i || p[0] > a[i - 1][0]);
     const curve = smoothPath(points),
       area = curve + `L${points.at(-1)[0]},62L${points[0][0]},62Z`;
-    return `<svg viewBox="0 0 500 64" preserveAspectRatio="none" aria-label="${this._t("rain")}"><defs><linearGradient id="nowcast-fill" x2="0" y2="1"><stop stop-color="#9ce1ee" stop-opacity=".5"/><stop offset="1" stop-color="#9ce1ee" stop-opacity=".02"/></linearGradient></defs><path d="M0 62H500M0 32H500" stroke="white" stroke-opacity=".1"/><path d="${area}" fill="url(#nowcast-fill)"/><path d="${curve}" fill="none" stroke="#aeeaf3" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+    return `<div class="rain-plot"><div class="rain-scale" aria-hidden="true"><span>${num(max, 1)}<small>${esc(unit)}</small></span><span>0</span></div><div><div class="rain-chart"><svg viewBox="0 0 500 64" preserveAspectRatio="none" role="img" aria-label="${this._t("rainAmount")}: 0–${num(max, 1)} ${esc(unit)}"><defs><linearGradient id="nowcast-fill" x2="0" y2="1"><stop stop-color="#9ce1ee" stop-opacity=".5"/><stop offset="1" stop-color="#9ce1ee" stop-opacity=".02"/></linearGradient></defs><path d="M0 62H500M0 6H500" stroke="white" stroke-opacity=".1"/><path d="${area}" fill="url(#nowcast-fill)"/><path d="${curve}" fill="none" stroke="#aeeaf3" stroke-width="2" vector-effect="non-scaling-stroke"/></svg></div><div class="chart-times"><span>${this._t("now")}</span><span>+45 min</span><span>+90 min</span></div></div></div>`;
   }
   _moonName(phase) {
     return this._t(
@@ -724,7 +730,6 @@ class AtmosphereCard extends HTMLElement {
       this.isConnected &&
       this._visible &&
       !document.hidden &&
-      !this._paused &&
       !this._reduced.matches;
     this.shadowRoot
       .querySelector(".atmosphere")
@@ -807,7 +812,6 @@ class AtmosphereCard extends HTMLElement {
         !this.isConnected ||
         !this._visible ||
         document.hidden ||
-        this._paused ||
         this._reduced.matches
       ) {
         this._raf = null;
@@ -961,11 +965,6 @@ class AtmosphereCard extends HTMLElement {
       this._fetch();
       return;
     }
-    if (action === "motion") {
-      this._paused = !this._paused;
-      this._render();
-      return;
-    }
     if (action === "mode") {
       this._mode = value;
       const old = this.shadowRoot.querySelector(".segmented");
@@ -985,7 +984,7 @@ class AtmosphereCard extends HTMLElement {
             ),
           );
         old.dataset.instant = String(
-          !!this._keyboardAction || this._paused || this._reduced.matches,
+          !!this._keyboardAction || this._reduced.matches,
         );
         old.dataset.mode = value;
         if (focused)
@@ -993,12 +992,7 @@ class AtmosphereCard extends HTMLElement {
             .querySelector(`[data-value="${value}"]`)
             .focus({ preventScroll: true });
       }
-      if (
-        hours &&
-        !this._keyboardAction &&
-        !this._paused &&
-        !this._reduced.matches
-      ) {
+      if (hours && !this._keyboardAction && !this._reduced.matches) {
         this.shadowRoot
           .querySelectorAll(".hour .weather-icon")
           .forEach((el, i) =>
@@ -1159,7 +1153,7 @@ class AtmosphereCard extends HTMLElement {
     } else if (type === "rain") {
       content = `<div class="detail-temperature">${num(d.daily[0]?.precipitation, 1)}<span> mm</span></div><p>${t("today")}</p>${this._hourChart(d.hourly.filter((h) => new Date(h.datetime) > new Date()).slice(0, 24), "precipitation")}<button class="full-button" data-action="detail" data-value="radar">${t("radar")} ↗</button>`;
     } else if (type === "source") {
-      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend. Maanbeelden: NASA/LRO." : "Wind maps load from Windy on request. Sun and moon information is calculated locally. Moon imagery: NASA/LRO."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.5.1 ↗</a>`;
+      content = `<p>${esc(d.attribution)}</p><p>${this._nl ? "Voorspellingen en waarschuwingen worden elke 7 minuten opgehaald. Aanvullende modelgegevens elke 30 minuten. Waarschuwingen kunnen een ruimer gebied betreffen: lees de waarschuwingstekst." : "Forecasts and warnings refresh every 7 minutes; supplementary model data every 30 minutes. Warnings may concern a wider area: read the warning text."}</p><p>${this._nl ? "Windkaarten worden op verzoek geladen van Windy. Zon- en maangegevens worden lokaal berekend. Maanbeelden: NASA/LRO." : "Wind maps load from Windy on request. Sun and moon information is calculated locally. Moon imagery: NASA/LRO."}</p><p>${t("updated")}: ${this._time(d.updated_at)}${this._isStale() ? " · " + t("stale") : ""}</p><a href="https://github.com/TwilightDuck/ha-atmosphere" target="_blank" rel="noopener noreferrer">Atmosphere 1.5.2 ↗</a>`;
     } else {
       const map = {
           feels: [c.apparent_temperature, "°C"],
