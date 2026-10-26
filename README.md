@@ -57,7 +57,7 @@ The integration registers its bundled card resource automatically for storage-mo
 ```yaml
 lovelace:
   resources:
-    - url: /atmosphere/atmosphere-card.js?v=1.5.2
+    - url: /atmosphere/atmosphere-card.js?v=1.5.3
       type: module
 ```
 
@@ -96,7 +96,7 @@ Supported panels are `current`, `warnings`, `hourly`, `daily`, `feels`, `sun`, `
 
 ## Reusable overview card
 
-Add **Atmosphere Overview** from Home Assistant’s card picker for a compact dashboard card. It shares the full card’s data, animations, GPS, warning details and interactive maps. Its default panels are current conditions, warnings, hourly forecasts and radar. Empty warning panels disappear automatically; active/upcoming warnings and unavailable warning feeds stay visible. Use a two-column section on a four-column Sections dashboard for a half-width overview. The visual editor lets each instance choose its own location and panels.
+Add **Atmosphere Overview** from Home Assistant’s card picker for a compact dashboard card. It shares the full card’s data, animations, GPS, warning details and interactive maps. Its default panels are current conditions, warnings, hourly forecasts and radar. Section spacing stays consistent around headings, charts and footers; the sky fades into the reading surface without a hard edge. Empty warning panels disappear automatically; active/upcoming warnings and unavailable warning feeds stay visible. Use a two-column section on a four-column Sections dashboard for a half-width overview. The visual editor lets each instance choose its own location and panels.
 
 ```yaml
 type: custom:atmosphere-overview-card

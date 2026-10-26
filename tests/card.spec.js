@@ -984,9 +984,50 @@ test("overview hides all-clear warnings and fits a dashboard column", async ({
     const card = page.locator("atmosphere-overview-card");
     if (["clear", "expired"].includes(state)) {
       await expect(card.locator(".warning")).toBeHidden();
-      if (state === "clear")
-        await card.screenshot({ path: "screenshots/overview-clear.png" });
-      expect((await card.boundingBox()).height).toBeLessThan(450);
+      expect((await card.boundingBox()).height).toBeLessThan(580);
+      if (state === "clear") {
+        for (const width of [600, 390]) {
+          await page.setViewportSize({ width, height: 1000 });
+          const gaps = await card.evaluate((el) => {
+            const root = el.shadowRoot;
+            const rect = (selector) =>
+              root.querySelector(selector).getBoundingClientRect();
+            return {
+              section: rect(".radar-panel").top - rect(".hourly").bottom,
+              heading:
+                rect(".rainfall").top -
+                rect(".radar-panel .panel-header").bottom,
+              chart: rect(".rain-plot").top - rect(".rain-outlook").bottom,
+              footer: rect("footer").top - rect(".radar-panel").bottom,
+            };
+          });
+          expect(gaps.section).toBeGreaterThanOrEqual(16);
+          expect(gaps.heading).toBeGreaterThanOrEqual(16);
+          expect(gaps.chart).toBeGreaterThanOrEqual(12);
+          expect(gaps.footer).toBeGreaterThanOrEqual(18);
+          if (width === 390) {
+            expect(
+              await card
+                .locator(".rain-chart")
+                .evaluate((el) => el.getBoundingClientRect().width),
+            ).toBeGreaterThan(200);
+            expect(
+              await card.evaluate((el) => {
+                const root = el.shadowRoot;
+                return (
+                  root.querySelector(".nowcast").getBoundingClientRect().top -
+                  root.querySelector(".rain-total").getBoundingClientRect()
+                    .bottom
+                );
+              }),
+            ).toBeGreaterThanOrEqual(14);
+          }
+          await card.screenshot({
+            path: `screenshots/overview-rain-${width}.png`,
+          });
+        }
+        await page.setViewportSize({ width: 600, height: 1000 });
+      }
     } else {
       await expect(card.locator(".warning")).toBeVisible();
       await card.locator(".warning").click();
@@ -1016,6 +1057,17 @@ test("rain outlook explains dry, wet, uncertain and unavailable forecasts", asyn
             })),
     }));
     const radar = page.locator(".radar-panel");
+    expect(
+      await radar.evaluate((el) => {
+        const header = el
+          .querySelector(".panel-header")
+          .getBoundingClientRect();
+        return (
+          el.querySelector(".rainfall").getBoundingClientRect().top -
+          header.bottom
+        );
+      }),
+    ).toBeGreaterThanOrEqual(16);
     await expect(page.locator('[data-action="motion"]')).toHaveCount(0);
     await expect(radar.locator(".rain-total")).toContainText(
       "Vandaag verwacht",
