@@ -57,7 +57,7 @@ The integration registers its bundled card resource automatically for storage-mo
 ```yaml
 lovelace:
   resources:
-    - url: /atmosphere/atmosphere-card.js?v=1.5.0
+    - url: /atmosphere/atmosphere-card.js?v=1.5.1
       type: module
 ```
 
@@ -96,7 +96,7 @@ Supported panels are `current`, `warnings`, `hourly`, `daily`, `feels`, `sun`, `
 
 ## Reusable overview card
 
-Add **Atmosphere Overview** from Home Assistant’s card picker for a compact dashboard card. It shares the full card’s data, animations, GPS, warning details and interactive maps. Its default panels are current conditions, warnings, hourly forecasts and radar. The visual editor lets each instance choose its own location and panels.
+Add **Atmosphere Overview** from Home Assistant’s card picker for a compact dashboard card. It shares the full card’s data, animations, GPS, warning details and interactive maps. Its default panels are current conditions, warnings, hourly forecasts and radar. Empty warning panels disappear automatically; active/upcoming warnings and unavailable warning feeds stay visible. Use a two-column section on a four-column Sections dashboard for a half-width overview. The visual editor lets each instance choose its own location and panels.
 
 ```yaml
 type: custom:atmosphere-overview-card
@@ -107,6 +107,8 @@ grid_options:
 ```
 
 Copy [examples/overview-card.yaml](examples/overview-card.yaml) into any dashboard’s Manual card editor, or use the picker. Replace the entity with the Atmosphere weather entity for that location. The full **Atmosphere Weather** card remains available separately.
+
+KMI UV remains preferred when provided. If KMI omits it, Atmosphere uses the nearest hourly UV index from Open-Meteo, including zero at night. Optional-source failures leave UV unavailable.
 
 ## Current device location
 

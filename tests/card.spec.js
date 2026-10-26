@@ -3,6 +3,11 @@ import { readFileSync } from "node:fs";
 const sample = JSON.parse(
   readFileSync(new URL("./live-sample.json", import.meta.url)),
 );
+// Keep captured warning validity independent of the day the suite runs.
+for (const warning of sample.warnings) {
+  warning.starts_at = new Date(Date.now() - 3600000).toISOString();
+  warning.ends_at = new Date(Date.now() + 3600000).toISOString();
+}
 async function open(page, transform = (d) => d) {
   const data = transform(structuredClone(sample));
   data.updated_at = new Date().toISOString();
@@ -863,37 +868,7 @@ test("reusable overview card renders compact defaults and its visual editor agre
     r.fulfill({ body: "Weather map" }),
   );
   await open(page);
-  await page.evaluate((data) => {
-    data.updated_at = new Date().toISOString();
-    const hass = {
-      language: "nl",
-      states: {
-        "weather.malle_weather": {
-          entity_id: "weather.malle_weather",
-          state: data.current.condition,
-          attributes: {
-            atmosphere_entry_id: "preview",
-            friendly_name: "Malle weather",
-            updated_at: data.updated_at,
-          },
-        },
-      },
-      callWS: async () => data,
-    };
-    const card = document.createElement("atmosphere-overview-card");
-    const Card = customElements.get("atmosphere-overview-card");
-    const config = Card.getStubConfig(hass);
-    card.setConfig(config);
-    card.hass = hass;
-    document.querySelector("atmosphere-card").replaceWith(card);
-    const editor = Card.getConfigElement();
-    editor.setConfig(config);
-    editor.hass = hass;
-    editor.addEventListener("config-changed", (event) =>
-      card.setConfig(event.detail.config),
-    );
-    document.body.append(editor);
-  }, structuredClone(sample));
+  await mountOverview(page, { ...sample, updated_at: new Date().toISOString() });
   const card = page.locator("atmosphere-overview-card");
   for (const section of ["current", "warnings", "hourly", "radar"])
     await expect(card.locator(`[data-section="${section}"]`)).toBeVisible();
@@ -928,4 +903,69 @@ test("reusable overview card renders compact defaults and its visual editor agre
   await page.keyboard.press("Escape");
   await editor.locator('[data-section-choice="daily"]').check();
   await expect(card.locator(".daily")).toBeVisible();
+});
+
+async function mountOverview(page, data) {
+  await page.evaluate((data) => {
+    data.updated_at ||= new Date().toISOString();
+    const hass = {
+      language: "nl",
+      states: {
+        "weather.malle_weather": {
+          entity_id: "weather.malle_weather",
+          state: data.current.condition,
+          attributes: {
+            atmosphere_entry_id: "preview",
+            friendly_name: "Malle weather",
+            updated_at: data.updated_at,
+          },
+        },
+      },
+      callWS: async () => data,
+    };
+    const card = document.createElement("atmosphere-overview-card");
+    const Card = customElements.get("atmosphere-overview-card");
+    const config = Card.getStubConfig(hass);
+    card.setConfig(config);
+    card.hass = hass;
+    document.querySelector("atmosphere-card").replaceWith(card);
+    const editor = Card.getConfigElement();
+    editor.setConfig(config);
+    editor.hass = hass;
+    editor.addEventListener("config-changed", (event) =>
+      card.setConfig(event.detail.config),
+    );
+    document.body.append(editor);
+  }, structuredClone(data));
+}
+
+test("overview hides all-clear warnings and fits a dashboard column", async ({ page }) => {
+  await page.setViewportSize({ width: 600, height: 1000 });
+  for (const state of ["clear", "active", "upcoming", "expired", "outage", "stale"]) {
+    await open(page);
+    const data = structuredClone(sample);
+    data.rain = Array.from({ length: 19 }, (_, i) => ({
+      datetime: new Date(Date.now() + i * 300000).toISOString(),
+      precipitation: i < 6 ? 0 : 0.3,
+    }));
+    data.warnings = ["active", "upcoming", "expired"].includes(state) ? data.warnings : [];
+    if (state === "upcoming") data.warnings[0].starts_at = new Date(Date.now() + 600000).toISOString();
+    if (state === "expired") data.warnings[0].ends_at = new Date(Date.now() - 600000).toISOString();
+    data.available = state !== "outage";
+    data.updated_at = new Date(Date.now() - (state === "stale" ? 3600000 : 0)).toISOString();
+    await mountOverview(page, data);
+    const card = page.locator("atmosphere-overview-card");
+    if (["clear", "expired"].includes(state)) {
+      await expect(card.locator(".warning")).toBeHidden();
+      if (state === "clear")
+        await card.screenshot({ path: "screenshots/overview-clear.png" });
+      expect((await card.boundingBox()).height).toBeLessThan(450);
+    } else {
+      await expect(card.locator(".warning")).toBeVisible();
+      await card.locator(".warning").click();
+      await expect(card.locator("dialog")).toBeVisible();
+      await page.keyboard.press("Escape");
+    }
+    expect(await card.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  }
 });

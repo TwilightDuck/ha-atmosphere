@@ -117,7 +117,7 @@ class AtmosphereCoordinator(DataUpdateCoordinator):
                 params
                 | {
                     "current": "relative_humidity_2m,apparent_temperature,is_day",
-                    "hourly": "visibility,dew_point_2m",
+                    "hourly": "visibility,dew_point_2m,uv_index",
                     "forecast_days": 2,
                 },
             ),
@@ -188,6 +188,11 @@ class AtmosphereCoordinator(DataUpdateCoordinator):
             current["dew_point"] = details.get(
                 "dew_point_2m", [None] * len(timestamps)
             )[idx]
+            # KMI may omit UV; use the model value for this hour, including zero at night.
+            if current.get("uv_index") is None:
+                current["uv_index"] = details.get(
+                    "uv_index", [None] * len(timestamps)
+                )[idx]
         for warning in warnings:
             warning["starts_at"] = warning["starts_at"].isoformat()
             warning["ends_at"] = warning["ends_at"].isoformat()

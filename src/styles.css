@@ -1391,3 +1391,80 @@ footer button::after {
   border-block-start: 0;
   padding-block-start: 0;
 }
+
+/* Dashboard-sized overview; the full weather card keeps its broader layout. */
+:host(atmosphere-overview-card) .body {
+  padding: 12px 18px 10px;
+}
+:host(atmosphere-overview-card) .overview {
+  padding-block: 12px 16px;
+  gap: 14px;
+}
+:host(atmosphere-overview-card) .hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+}
+:host(atmosphere-overview-card) .hero h1 {
+  font-size: 22px;
+}
+:host(atmosphere-overview-card) .hero-reading {
+  margin: 0;
+  gap: 16px;
+}
+:host(atmosphere-overview-card) .hero .temperature {
+  font-size: 60px;
+  letter-spacing: -3px;
+}
+:host(atmosphere-overview-card) .condition {
+  font-size: 18px;
+}
+:host(atmosphere-overview-card) .hero-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 10px;
+  font-size: 12px;
+}
+:host(atmosphere-overview-card) .forecast-grid {
+  gap: 10px;
+}
+:host(atmosphere-overview-card) .hourly {
+  padding-block: 8px;
+}
+:host(atmosphere-overview-card) .hours {
+  margin-block-start: 6px;
+  gap: 10px;
+}
+:host(atmosphere-overview-card) .hour {
+  grid-template-rows: 16px 30px 12px 22px;
+  gap: 2px;
+}
+:host(atmosphere-overview-card) .rainfall {
+  margin-block-start: 6px;
+  gap: 14px;
+  flex-direction: row;
+  align-items: center;
+}
+:host(atmosphere-overview-card) .rain-total {
+  padding-inline-end: 14px;
+}
+:host(atmosphere-overview-card) .rain-total strong {
+  font-size: 28px;
+}
+:host(atmosphere-overview-card) .rain-outlook {
+  font-size: 12px;
+}
+:host(atmosphere-overview-card) footer {
+  margin-block-start: 6px;
+}
+@container (max-width: 580px) {
+  :host(atmosphere-overview-card) .overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+:host(atmosphere-overview-card) .rain-chart {
+  block-size: 24px;
+  margin-block-start: 3px;
+}

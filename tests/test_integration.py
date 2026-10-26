@@ -1,6 +1,7 @@
 """Feature checks at the HA config-flow/entity/forecast lifecycle boundary."""
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -28,16 +29,22 @@ async def test_standalone_config_flow_entities_forecasts_and_outage(tmp_path):
     async def get_raw(self, coord):
         return json.loads(json.dumps(raw))
 
-    async def optional(self, latitude, longitude):
-        self.supplement = {
-            "current": {"relative_humidity_2m": 63, "apparent_temperature": 7.1}
+    async def optional_json(self, url, params):
+        if "air-quality" in url:
+            return {"current": sample["air"]}
+        assert "uv_index" in params["hourly"].split(",")
+        return {
+            "current": {"relative_humidity_2m": 63, "apparent_temperature": 7.1},
+            "hourly": {
+                "time": [datetime.now(timezone.utc).timestamp()],
+                "uv_index": [1.2],
+            },
         }
-        self.air = {"current": sample["air"]}
 
     try:
         with (
             patch.object(IrmKmiApiClient, "get_forecasts_coord", get_raw),
-            patch.object(AtmosphereCoordinator, "_optional", optional),
+            patch.object(AtmosphereCoordinator, "_json", optional_json),
         ):
             await bootstrap.async_from_config_dict(
                 {
@@ -84,6 +91,14 @@ async def test_standalone_config_flow_entities_forecasts_and_outage(tmp_path):
                 and s.attributes.get("warnings")
             )
             assert weather.state not in ("unknown", "unavailable")
+            assert weather.attributes["uv_index"] == 1.5
+            # The live KMI response omits its UV module outside the main season.
+            raw["module"] = [m for m in raw["module"] if m.get("type") != "uv"]
+            await entry.runtime_data.async_refresh()
+            assert hass.states.get(weather.entity_id).attributes.get("uv_index") == 1.2
+            entry.runtime_data.supplement["hourly"]["uv_index"] = [0]
+            await entry.runtime_data.async_refresh()
+            assert hass.states.get(weather.entity_id).attributes.get("uv_index") == 0
             assert warning.attributes["warnings"][0]["friendly_name"]
             forecast = await hass.services.async_call(
                 WEATHER_DOMAIN,
